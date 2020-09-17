@@ -1,7 +1,8 @@
 #pragma once
 
-namespace tc {
-	struct noise {
-		int x = 32;
-	};
+#include "perlin-noise.hpp"
+
+namespace tc
+{
+	static const perlin_noise perlin{};
 }
