@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <array>
 #include <vector>
+#include <ctime>
 #include "utils.hpp"
 
 namespace tc
@@ -56,6 +57,25 @@ namespace tc
 	class random
 	{
 	public:
+		random() : previous{static_cast<uint32_t>(time(nullptr))}
+		{
+			original = previous;
+		}
+		random(uint32_t seed) : previous{seed}, original{seed}
+		{
+		}
+
+		void reset()
+		{
+			previous = original;
+		}
+
+		void reset(uint32_t seed)
+		{
+			original = seed;
+			previous = seed;
+		}
+
 		template <typename T>
 		auto next(T max) const
 		{
@@ -94,5 +114,6 @@ namespace tc
 		}
 
 		mutable uint32_t previous{0};
+		uint32_t original{0};
 	};
 } // namespace tc
