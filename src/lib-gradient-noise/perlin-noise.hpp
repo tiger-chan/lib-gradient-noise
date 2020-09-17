@@ -6,9 +6,9 @@
 
 namespace tc
 {
-	// https://mrl.nyu.edu/~perlin/noise/
 	namespace internal
 	{
+		// https://mrl.nyu.edu/~perlin/noise/
 		static constexpr std::array<int32_t, 512> perlin_permutations()
 		{
 			constexpr auto permutation_size = 256;
@@ -47,10 +47,11 @@ namespace tc
 			std::array<int32_t, 512> result;
 			auto tmp = r.uniform_distribution<int32_t>(0, 255);
 
-			for (auto i = 0; i < 256; ++i) {
-				result[i] = result[i+256] = tmp[i];
+			for (auto i = 0; i < 256; ++i)
+			{
+				result[i] = result[i + 256] = tmp[i];
 			}
-			
+
 			return result;
 		}
 
@@ -73,30 +74,16 @@ namespace tc
 
 			return grad;
 		}
-
-		static constexpr std::array<std::array<int, 3>, 12> grad3{
-			std::array<int, 3>{1, 1, 0},
-			std::array<int, 3>{-1, 1, 0},
-			std::array<int, 3>{1, -1, 0},
-			std::array<int, 3>{-1, -1, 0},
-			std::array<int, 3>{1, 0, 1},
-			std::array<int, 3>{-1, 0, 1},
-			std::array<int, 3>{1, 0, -1},
-			std::array<int, 3>{-1, 0, -1},
-			std::array<int, 3>{0, 1, 1},
-			std::array<int, 3>{0, -1, 1},
-			std::array<int, 3>{0, 1, -1},
-			std::array<int, 3>{0, -1, -1}};
 	} // namespace internal
 
 	class perlin_noise
 	{
 	public:
-		perlin_noise() : perm{ internal::perlin_permutations() }
+		perlin_noise() : perm{internal::perlin_permutations()}
 		{
 		}
 
-		perlin_noise(uint32_t seed) : perm{ internal::perlin_permutations(seed) }
+		perlin_noise(uint32_t seed) : perm{internal::perlin_permutations(seed)}
 		{
 		}
 
@@ -160,6 +147,65 @@ namespace tc
 			return lerp(l1, l2, v);
 		}
 
+		double eval(double x, double y, double z) const
+		{
+			// https://mrl.nyu.edu/~perlin/noise/
+			// Find unit cube that contains point.
+			double x0 = tc::quick_floor(x);
+			double y0 = tc::quick_floor(y);
+			double z0 = tc::quick_floor(z);
+			int32_t xi = static_cast<int32_t>(x0) & index_mask;
+			int32_t yi = static_cast<int32_t>(y0) & index_mask;
+			int32_t zi = static_cast<int32_t>(z0) & index_mask;
+
+			//  Find relative x,y,z of point in cube.
+			x0 = x - x0;
+			y0 = y - y0;
+			z0 = z - z0;
+			auto x1 = x0 - 1.0;
+			auto y1 = y0 - 1.0;
+			auto z1 = z0 - 1.0;
+
+			// Hash coordinates of the 8 cube corners
+			auto A = perm[xi] + yi;
+			auto AA = perm[A] + zi;
+			auto AB = perm[A + 1] + zi;
+			auto B = perm[xi + 1] + yi;
+			auto BA = perm[B] + zi;
+			auto BB = perm[B + 1] + zi;
+
+			// Compute fade curves for each of x,y,z.
+			auto u = fade(x0);
+			auto v = fade(y0);
+			auto w = fade(z0);
+
+			// And add blended results from 8 corners of cube
+			auto lu1 = lerp(
+				grad(perm[AA], x0, y0, z0),
+				grad(perm[BA], x1, y0, z0),
+				u);
+
+			auto lu2 = lerp(
+				grad(perm[AB], x0, y1, z0),
+				grad(perm[BB], x1, y1, z0),
+				u);
+
+			auto lu3 = lerp(
+				grad(perm[AA + 1], x0, y0, z1),
+				grad(perm[BA + 1], x1, y0, z1),
+				u);
+
+			auto lu4 = lerp(
+				grad(perm[AB + 1], x0, y1, z1),
+				grad(perm[BB + 1], x1, y1, z1),
+				u);
+
+			auto lv1 = lerp( lu1, lu2, v);
+			auto lv2 = lerp( lu3, lu4, v);
+
+			return lerp(lv1, lv2, w);
+		}
+
 	private:
 		static double fade(double t)
 		{
@@ -202,10 +248,37 @@ namespace tc
 
 		double grad(int hash, double x, double y, double z) const
 		{
-			int h = hash & 15;		  // CONVERT LO 4 BITS OF HASH CODE
-			double u = h < 8 ? x : y, // INTO 12 GRADIENT DIRECTIONS.
-				v = h < 4 ? y : h == 12 || h == 14 ? x : z;
-			return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
+			switch(hash & 15)
+			{
+				// 12 cube midpoints
+				case 0: return x + z;
+				case 1: return x + y;
+				case 2: return y + z;
+				case 3: return -x + y;
+				case 4: return -x + z;
+				case 5: return -x - y;
+				case 6: return -y + z;
+				case 7: return x - y;
+				case 8: return x - z;
+				case 9: return y - z;
+				case 10: return -x - z;
+				case 11: return -y - z;
+				// 4 vertices of regular tetrahedron
+				case 12: return x + y;
+				case 13: return -x + y;
+				case 14: return -y + z;
+				case 15: return -y - z;
+				// This can't happen
+				default: return 0;
+			}
+
+			// https://mrl.nyu.edu/~perlin/noise/
+			// this seems like it would be slower to compute.
+			// Convert lo 4 bits of hash code into 12 gradient directions.
+			// int h = hash & 15;
+			// double u = h < 8 ? x : y,
+			// 	   v = h < 4 ? y : h == 12 || h == 14 ? x : z;
+			// return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
 		}
 
 		static constexpr int32_t index_mask = 255;
