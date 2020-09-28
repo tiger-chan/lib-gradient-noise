@@ -1,7 +1,9 @@
-#pragma once
+#ifndef UPROAR_CORE_PERLIN_NOISE_HPP
+#define UPROAR_CORE_PERLIN_NOISE_HPP
 
+#include "../core/attributes.hpp"
 #include <array>
-#include "utils.hpp"
+#include "algorithm.hpp"
 #include "random.hpp"
 
 namespace tc
@@ -76,7 +78,7 @@ namespace tc
 		}
 	} // namespace internal
 
-	class perlin_noise
+	class UPROAR_API perlin_noise
 	{
 	public:
 		perlin_noise() : perm{internal::perlin_permutations()}
@@ -105,8 +107,8 @@ namespace tc
 			auto dx = x - x0;
 			auto u = fade(dx);
 
-			auto A = perm[static_cast<int32_t>(x0) & 255];
-			auto B = perm[static_cast<int32_t>(x1) & 255];
+			auto A = perm[static_cast<int32_t>(x0) & index_mask];
+			auto B = perm[static_cast<int32_t>(x1) & index_mask];
 
 			auto gx0 = grad(A, x0);
 			auto gx1 = grad(B, x1);
@@ -217,7 +219,7 @@ namespace tc
 		{
 			static constexpr auto grad = internal::perlin_gradiant_1d();
 			int h = hash & 15; // Convert lo 4 bits of hash code
-			return grad[h] * x;
+			return grad[h];// * x;
 		}
 
 		static double grad(int32_t hash, double x, double y)
@@ -285,3 +287,6 @@ namespace tc
 		std::array<int32_t, 512> perm;
 	}; // namespace tc
 } // namespace tc
+
+
+#endif // UPROAR_CORE_PERLIN_NOISE_HPP

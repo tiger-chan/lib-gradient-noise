@@ -1,10 +1,12 @@
-#pragma once
+#ifndef UPROAR_CORE_RANDOM_HPP
+#define UPROAR_CORE_RANDOM_HPP
 
+#include "../core/attributes.hpp"
 #include <cstdint>
 #include <array>
 #include <vector>
 #include <ctime>
-#include "utils.hpp"
+#include "algorithm.hpp"
 
 namespace tc
 {
@@ -54,7 +56,7 @@ namespace tc
 		}
 	} // namespace internal
 
-	class random
+	class UPROAR_API random
 	{
 	public:
 		random() : previous{static_cast<uint32_t>(time(nullptr))}
@@ -117,3 +119,5 @@ namespace tc
 		uint32_t original{0};
 	};
 } // namespace tc
+
+#endif // UPROAR_CORE_RANDOM_HPP

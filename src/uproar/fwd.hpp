@@ -1,7 +1,6 @@
-#pragma once
+#ifndef UPROAR_FWD_HPP
+#define UPROAR_FWD_HPP
 
-namespace tc
-{
-	class perlin_noise;
-	class random;
-}
+#include "core/fwd.hpp"
+
+#endif // UPROAR_FWD_HPP

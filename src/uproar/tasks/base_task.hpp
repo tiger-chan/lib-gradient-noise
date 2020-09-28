@@ -1,0 +1,24 @@
+#ifndef UPROAR_TASKS_BASE_TASK_HPP
+#define UPROAR_TASKS_BASE_TASK_HPP
+
+#include "../core/attributes.hpp"
+#include "../config/config.hpp"
+
+namespace tc
+{
+	namespace task
+	{
+		class UPROAR_API base_task
+		{
+		public:
+			using decimal_t = UPROAR_DECIMAL_TYPE;
+			virtual ~base_task() = default;
+
+			virtual decimal_t eval(decimal_t x) const { return 0; }
+			virtual decimal_t eval(decimal_t x, decimal_t y) const { return 0; }
+			virtual decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const { return 0; }
+		};
+	} // namespace task
+} // namespace tc
+
+#endif // UPROAR_TASKS_BASE_TASK_HPP
