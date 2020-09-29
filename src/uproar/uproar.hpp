@@ -2,7 +2,8 @@
 #define UPROAR_UPROAR_HPP
 
 #include "fwd.hpp"
-#include "core/perlin-noise.hpp"
+#include "core/core.hpp"
+#include "tasks/tasks.hpp"
 
 namespace tc
 {

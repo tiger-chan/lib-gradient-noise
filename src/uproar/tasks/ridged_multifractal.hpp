@@ -38,13 +38,16 @@ namespace tc
 {
 	namespace task
 	{
-		static constexpr UPROAR_OCTAVE_TYPE default_ridged_multifractal_octaves{RIDGED_MULTIFRACTAL_OCTIVE_COUNT_DEFAULT};
-		static constexpr UPROAR_OCTAVE_TYPE ridged_multifractal_max_octaves{RIDGED_MULTIFRACTAL_MAX_OCTAVES_DEFAULT};
-		static constexpr UPROAR_DECIMAL_TYPE default_ridged_multifractal_lacunarity{RIDGED_MULTIFRACTAL_LACUNARITY_DEFAULT};
-		static constexpr UPROAR_DECIMAL_TYPE default_ridged_multifractal_persistance{RIDGED_MULTIFRACTAL_PERSISTANCE_DEFAULT};
-		static constexpr UPROAR_DECIMAL_TYPE default_ridged_multifractal_frequency{RIDGED_MULTIFRACTAL_FREQUENCY_DEFAULT};
-		static constexpr UPROAR_DECIMAL_TYPE default_ridged_multifractal_exponent{RIDGED_MULTIFRACTAL_EXPONENT_DEFAULT};
-		static constexpr UPROAR_DECIMAL_TYPE default_ridged_multifractal_offset{RIDGED_MULTIFRACTAL_OFFSET_DEFAULT};
+		namespace defaults
+		{
+			static constexpr UPROAR_OCTAVE_TYPE ridged_multifractal_octaves{RIDGED_MULTIFRACTAL_OCTIVE_COUNT_DEFAULT};
+			static constexpr UPROAR_OCTAVE_TYPE ridged_multifractal_max_octaves{RIDGED_MULTIFRACTAL_MAX_OCTAVES_DEFAULT};
+			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_lacunarity{RIDGED_MULTIFRACTAL_LACUNARITY_DEFAULT};
+			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_persistance{RIDGED_MULTIFRACTAL_PERSISTANCE_DEFAULT};
+			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_frequency{RIDGED_MULTIFRACTAL_FREQUENCY_DEFAULT};
+			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_exponent{RIDGED_MULTIFRACTAL_EXPONENT_DEFAULT};
+			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_offset{RIDGED_MULTIFRACTAL_OFFSET_DEFAULT};
+		} // namespace defaults
 
 		template <typename Noise>
 		class UPROAR_API ridged_multifractal : public generation_task
@@ -59,18 +62,18 @@ namespace tc
 				decimal_t bias{0};
 			};
 
-			ridged_multifractal()
+			ridged_multifractal() UPROAR_NOEXCEPT
 			{
 				calc_weights();
 			}
 
 			ridged_multifractal(
 				octave_t octaves,
-				decimal_t lacunarity = default_ridged_multifractal_lacunarity,
-				decimal_t persistance = default_ridged_multifractal_persistance,
-				decimal_t frequency = default_ridged_multifractal_frequency,
-				decimal_t exponent = default_ridged_multifractal_exponent,
-				decimal_t offset = default_ridged_multifractal_exponent)
+				decimal_t lacunarity = defaults::ridged_multifractal_lacunarity,
+				decimal_t persistance = defaults::ridged_multifractal_persistance,
+				decimal_t frequency = defaults::ridged_multifractal_frequency,
+				decimal_t exponent = defaults::ridged_multifractal_exponent,
+				decimal_t offset = defaults::ridged_multifractal_exponent) UPROAR_NOEXCEPT
 				: octaves_{octaves},
 				  lacunarity_{lacunarity},
 				  persistance_{persistance},
@@ -84,66 +87,66 @@ namespace tc
 			ridged_multifractal(
 				uint32_t seed,
 				octave_t octaves,
-				decimal_t lacunarity = default_ridged_multifractal_lacunarity,
-				decimal_t persistance = default_ridged_multifractal_persistance,
-				decimal_t frequency = default_ridged_multifractal_frequency,
-				decimal_t exponent = default_ridged_multifractal_exponent,
-				decimal_t offset = default_ridged_multifractal_exponent)
+				decimal_t lacunarity = defaults::ridged_multifractal_lacunarity,
+				decimal_t persistance = defaults::ridged_multifractal_persistance,
+				decimal_t frequency = defaults::ridged_multifractal_frequency,
+				decimal_t exponent = defaults::ridged_multifractal_exponent,
+				decimal_t offset = defaults::ridged_multifractal_exponent) UPROAR_NOEXCEPT
 				: ridged_multifractal(octaves, lacunarity, persistance, frequency, exponent, offset), noise{seed}
 			{
 			}
 
-			ridged_multifractal &set_octaves(octave_t octaves)
+			ridged_multifractal &set_octaves(octave_t octaves) UPROAR_NOEXCEPT
 			{
 				return octaves_ = octaves, *this;
 			}
 
-			auto octaves() const
+			auto octaves() const UPROAR_NOEXCEPT
 			{
 				return octaves_;
 			}
 
-			ridged_multifractal &set_lacunarity(decimal_t lacunarity)
+			ridged_multifractal &set_lacunarity(decimal_t lacunarity) UPROAR_NOEXCEPT
 			{
 				return lacunarity_ = lacunarity, calc_weights(), *this;
 			}
 
-			auto lacunarity() const
+			auto lacunarity() const UPROAR_NOEXCEPT
 			{
 				return lacunarity_;
 			}
 
-			ridged_multifractal &set_offset(decimal_t offset)
+			ridged_multifractal &set_offset(decimal_t offset) UPROAR_NOEXCEPT
 			{
 				return offset_ = offset, calc_weights(), *this;
 			}
 
-			auto offset() const
+			auto offset() const UPROAR_NOEXCEPT
 			{
 				return offset_;
 			}
 
-			ridged_multifractal &set_persistance(decimal_t persistance)
+			ridged_multifractal &set_persistance(decimal_t persistance) UPROAR_NOEXCEPT
 			{
 				return persistance_ = persistance, *this;
 			}
 
-			auto persistance() const
+			auto persistance() const UPROAR_NOEXCEPT
 			{
 				return persistance_;
 			}
 
-			ridged_multifractal &set_frequency(decimal_t frequency)
+			ridged_multifractal &set_frequency(decimal_t frequency) UPROAR_NOEXCEPT
 			{
 				return frequency_ = frequency, *this;
 			}
 
-			auto frequency() const
+			auto frequency() const UPROAR_NOEXCEPT
 			{
 				return frequency_;
 			}
 
-			ridged_multifractal &set_seed(uint32_t seed)
+			ridged_multifractal &set_seed(uint32_t seed) UPROAR_NOEXCEPT
 			{
 				return noise_ = Noise{seed}, *this;
 			}
@@ -164,19 +167,19 @@ namespace tc
 			}
 
 		protected:
-			UPROAR_OCTAVE_TYPE octaves_{default_ridged_multifractal_octaves};
-			decimal_t lacunarity_{default_ridged_multifractal_lacunarity};
-			decimal_t persistance_{default_ridged_multifractal_persistance};
-			decimal_t frequency_{default_ridged_multifractal_frequency};
-			decimal_t exponent_{default_ridged_multifractal_exponent};
-			decimal_t offset_{default_ridged_multifractal_offset};
-			std::array<decimal_t, ridged_multifractal_max_octaves> weights_{};
-			std::array<correction, ridged_multifractal_max_octaves> corrections_{};
+			UPROAR_OCTAVE_TYPE octaves_{defaults::ridged_multifractal_octaves};
+			decimal_t lacunarity_{defaults::ridged_multifractal_lacunarity};
+			decimal_t persistance_{defaults::ridged_multifractal_persistance};
+			decimal_t frequency_{defaults::ridged_multifractal_frequency};
+			decimal_t exponent_{defaults::ridged_multifractal_exponent};
+			decimal_t offset_{defaults::ridged_multifractal_offset};
+			std::array<decimal_t, defaults::ridged_multifractal_max_octaves> weights_{};
+			std::array<correction, defaults::ridged_multifractal_max_octaves> corrections_{};
 			Noise noise_{};
 
 		private:
 			template <typename... Args>
-			decimal_t eval_normalized_impl(Args &&... args) const
+			decimal_t eval_normalized_impl(Args &&... args) const UPROAR_NOEXCEPT
 			{
 				decimal_t result{0.0};
 				decimal_t freq{frequency_};
@@ -192,17 +195,17 @@ namespace tc
 					freq *= lacunarity_;
 				}
 
-				auto& corrections = corrections_[octaves_ - 1];
+				auto &corrections = corrections_[octaves_ - 1];
 				return result * corrections.scale + corrections.bias;
 			}
 
-			void calc_weights()
+			void calc_weights() UPROAR_NOEXCEPT
 			{
 				static constexpr decimal_t one{1};
 				decimal_t min{0};
 				decimal_t max{0};
-				decimal_t freq{ lacunarity_ };
-				for (auto i = 0; i < ridged_multifractal_max_octaves; ++i)
+				decimal_t freq{lacunarity_};
+				for (auto i = 0; i < defaults::ridged_multifractal_max_octaves; ++i)
 				{
 					weights_[i] = pow(freq, -exponent_);
 					freq *= lacunarity_;
@@ -212,7 +215,7 @@ namespace tc
 					decimal_t a{-1}, b{1};
 					decimal_t scale = (b - a) / (max - min);
 					decimal_t bias = a - (min * scale);
-					corrections_[i] = correction { scale, bias };
+					corrections_[i] = correction{scale, bias};
 				}
 			}
 		};

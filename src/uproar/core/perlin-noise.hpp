@@ -1,6 +1,7 @@
 #ifndef UPROAR_CORE_PERLIN_NOISE_HPP
 #define UPROAR_CORE_PERLIN_NOISE_HPP
 
+#include "../config/config.hpp"
 #include "../core/attributes.hpp"
 #include <array>
 #include "algorithm.hpp"
@@ -81,25 +82,25 @@ namespace tc
 	class UPROAR_API perlin_noise
 	{
 	public:
-		perlin_noise() : perm{internal::perlin_permutations()}
+		perlin_noise() UPROAR_NOEXCEPT : perm{internal::perlin_permutations()}
 		{
 		}
 
-		perlin_noise(uint32_t seed) : perm{internal::perlin_permutations(seed)}
+		perlin_noise(uint32_t seed) UPROAR_NOEXCEPT : perm{internal::perlin_permutations(seed)}
 		{
 		}
 
-		void reset()
+		void reset() UPROAR_NOEXCEPT
 		{
 			perm = internal::perlin_permutations();
 		}
 
-		void reset(uint32_t seed)
+		void reset(uint32_t seed) UPROAR_NOEXCEPT
 		{
 			perm = internal::perlin_permutations(seed);
 		}
 
-		double eval(double x) const
+		double eval(double x) const UPROAR_NOEXCEPT
 		{
 			auto x0 = tc::quick_floor(x);
 			auto x1 = x0 + 1.0;
@@ -118,7 +119,7 @@ namespace tc
 			return lerp(p0, p1, u);
 		}
 
-		double eval(double x, double y) const
+		double eval(double x, double y) const UPROAR_NOEXCEPT
 		{
 			double x0 = tc::quick_floor(x);
 			double y0 = tc::quick_floor(y);
@@ -149,7 +150,7 @@ namespace tc
 			return lerp(l1, l2, v);
 		}
 
-		double eval(double x, double y, double z) const
+		double eval(double x, double y, double z) const UPROAR_NOEXCEPT
 		{
 			// https://mrl.nyu.edu/~perlin/noise/
 			// Find unit cube that contains point.
@@ -209,20 +210,19 @@ namespace tc
 		}
 
 	private:
-		static double fade(double t)
+		static double fade(double t) UPROAR_NOEXCEPT
 		{
-			// 6t^5 - 15t^4 + 10t^3
-			return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+			return quintic_curve(t);
 		}
 
-		static double grad(int32_t hash, double x)
+		static double grad(int32_t hash, double x) UPROAR_NOEXCEPT
 		{
 			static constexpr auto grad = internal::perlin_gradiant_1d();
 			int h = hash & 15; // Convert lo 4 bits of hash code
 			return grad[h];// * x;
 		}
 
-		static double grad(int32_t hash, double x, double y)
+		static double grad(int32_t hash, double x, double y) UPROAR_NOEXCEPT
 		{
 			int32_t h = hash & 7; // Convert lo 3 bits of hash code
 			switch (h)
@@ -248,7 +248,7 @@ namespace tc
 			return 0;
 		}
 
-		double grad(int hash, double x, double y, double z) const
+		double grad(int hash, double x, double y, double z) const UPROAR_NOEXCEPT
 		{
 			switch(hash & 15)
 			{

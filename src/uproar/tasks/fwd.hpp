@@ -8,6 +8,8 @@ namespace tc
 		class base_task;
 		class generation;
 		class mutation;
+
+		struct task_source;
 		
 		template <typename>
 		class perlin;

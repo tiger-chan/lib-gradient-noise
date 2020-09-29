@@ -5,35 +5,38 @@
 #include "fwd.hpp"
 #include "generation.hpp"
 
-#ifndef PERLIN_OCTIVE_COUNT_DEFAULT
-#define PERLIN_OCTIVE_COUNT_DEFAULT 6
+#ifndef UPROAR_PERLIN_OCTIVE_COUNT_DEFAULT
+#define UPROAR_PERLIN_OCTIVE_COUNT_DEFAULT 6
 #endif
 
-#ifndef PERLIN_LACUNARITY_DEFAULT
-#define PERLIN_LACUNARITY_DEFAULT 2.0
+#ifndef UPROAR_PERLIN_LACUNARITY_DEFAULT
+#define UPROAR_PERLIN_LACUNARITY_DEFAULT 2.0
 #endif
 
-#ifndef PERLIN_PERSISTANCE_DEFAULT
-#define PERLIN_PERSISTANCE_DEFAULT 0.5
+#ifndef UPROAR_PERLIN_PERSISTANCE_DEFAULT
+#define UPROAR_PERLIN_PERSISTANCE_DEFAULT 0.5
 #endif
 
-#ifndef PERLIN_FREQUENCY_DEFAULT
-#define PERLIN_FREQUENCY_DEFAULT 1.0
+#ifndef UPROAR_PERLIN_FREQUENCY_DEFAULT
+#define UPROAR_PERLIN_FREQUENCY_DEFAULT 1.0
 #endif
 
-#ifndef PERLIN_AMPLITUDE_DEFAULT
-#define PERLIN_AMPLITUDE_DEFAULT 1.0
+#ifndef UPROAR_PERLIN_AMPLITUDE_DEFAULT
+#define UPROAR_PERLIN_AMPLITUDE_DEFAULT 1.0
 #endif
 
 namespace tc
 {
 	namespace task
 	{
-		static constexpr UPROAR_OCTAVE_TYPE default_perlin_octaves{PERLIN_OCTIVE_COUNT_DEFAULT};
-		static constexpr UPROAR_DECIMAL_TYPE default_perlin_lacunarity{PERLIN_LACUNARITY_DEFAULT};
-		static constexpr UPROAR_DECIMAL_TYPE default_perlin_persistance{PERLIN_PERSISTANCE_DEFAULT};
-		static constexpr UPROAR_DECIMAL_TYPE default_perlin_frequency{PERLIN_FREQUENCY_DEFAULT};
-		static constexpr UPROAR_DECIMAL_TYPE default_perlin_amplitude{PERLIN_AMPLITUDE_DEFAULT};
+		namespace defaults
+		{
+			static constexpr UPROAR_OCTAVE_TYPE perlin_octaves{UPROAR_PERLIN_OCTIVE_COUNT_DEFAULT};
+			static constexpr UPROAR_DECIMAL_TYPE perlin_lacunarity{UPROAR_PERLIN_LACUNARITY_DEFAULT};
+			static constexpr UPROAR_DECIMAL_TYPE perlin_persistance{UPROAR_PERLIN_PERSISTANCE_DEFAULT};
+			static constexpr UPROAR_DECIMAL_TYPE perlin_frequency{UPROAR_PERLIN_FREQUENCY_DEFAULT};
+			static constexpr UPROAR_DECIMAL_TYPE perlin_amplitude{UPROAR_PERLIN_AMPLITUDE_DEFAULT};
+		} // namespace defaults
 
 		template <typename Noise>
 		class UPROAR_API perlin : public generation_task
@@ -46,10 +49,10 @@ namespace tc
 
 			perlin(
 				octave_t octaves,
-				decimal_t lacunarity = default_perlin_lacunarity,
-				decimal_t persistance = default_perlin_persistance,
-				decimal_t frequency = default_perlin_frequency,
-				decimal_t amplitude = default_perlin_amplitude)
+				decimal_t lacunarity = defaults::perlin_lacunarity,
+				decimal_t persistance = defaults::perlin_persistance,
+				decimal_t frequency = defaults::perlin_frequency,
+				decimal_t amplitude = defaults::perlin_amplitude) UPROAR_NOEXCEPT
 				: octaves_{octaves},
 				  lacunarity_{lacunarity},
 				  persistance_{persistance},
@@ -61,55 +64,66 @@ namespace tc
 			perlin(
 				uint32_t seed,
 				octave_t octaves,
-				decimal_t lacunarity = default_perlin_lacunarity,
-				decimal_t persistance = default_perlin_persistance,
-				decimal_t frequency = default_perlin_frequency,
-				decimal_t amplitude = default_perlin_amplitude)
+				decimal_t lacunarity = defaults::perlin_lacunarity,
+				decimal_t persistance = defaults::perlin_persistance,
+				decimal_t frequency = defaults::perlin_frequency,
+				decimal_t amplitude = defaults::perlin_amplitude) UPROAR_NOEXCEPT
 				: perlin(octaves, lacunarity, persistance, frequency, amplitude), noise{seed}
 			{
 			}
 
-			perlin& set_octaves(octave_t octaves) {
+			perlin &set_octaves(octave_t octaves) UPROAR_NOEXCEPT
+			{
 				return octaves_ = octaves, *this;
 			}
 
-			auto octaves() const {
+			auto octaves() const UPROAR_NOEXCEPT
+			{
 				return octaves_;
 			}
 
-			perlin& set_lacunarity(decimal_t lacunarity) {
+			perlin &set_lacunarity(decimal_t lacunarity) UPROAR_NOEXCEPT
+			{
 				return lacunarity_ = lacunarity, *this;
 			}
 
-			auto lacunarity() const {
+			auto lacunarity() const UPROAR_NOEXCEPT
+			{
 				return lacunarity_;
 			}
 
-			perlin& set_persistance(decimal_t persistance) {
+			perlin &set_persistance(decimal_t persistance) UPROAR_NOEXCEPT
+			{
 				return persistance_ = persistance, *this;
 			}
 
-			auto persistance() const {
+			auto persistance() const UPROAR_NOEXCEPT
+			{
 				return persistance_;
 			}
 
-			perlin& set_frequency(decimal_t frequency) {
+			perlin &set_frequency(decimal_t frequency) UPROAR_NOEXCEPT
+			{
 				return frequency_ = frequency, *this;
 			}
 
-			auto frequency() const {
+			auto frequency() const UPROAR_NOEXCEPT
+			{
 				return frequency_;
 			}
 
-			perlin& set_amplitude(decimal_t amplitude) {
+			perlin &set_amplitude(decimal_t amplitude) UPROAR_NOEXCEPT
+			{
 				return amplitude_ = amplitude, *this;
 			}
 
-			auto amplitude() const {
+			auto amplitude() const UPROAR_NOEXCEPT
+			{
 				return amplitude_;
 			}
 
-			perlin& set_seed(uint32_t seed) {
+			perlin &set_seed(uint32_t seed) UPROAR_NOEXCEPT
+			{
 				return noise_ = Noise{seed}, *this;
 			}
 
@@ -129,16 +143,16 @@ namespace tc
 			}
 
 		protected:
-			UPROAR_OCTAVE_TYPE octaves_{default_perlin_octaves};
-			decimal_t lacunarity_{default_perlin_lacunarity};
-			decimal_t persistance_{default_perlin_persistance};
-			decimal_t frequency_{default_perlin_frequency};
-			decimal_t amplitude_{default_perlin_amplitude};
+			UPROAR_OCTAVE_TYPE octaves_{defaults::perlin_octaves};
+			decimal_t lacunarity_{defaults::perlin_lacunarity};
+			decimal_t persistance_{defaults::perlin_persistance};
+			decimal_t frequency_{defaults::perlin_frequency};
+			decimal_t amplitude_{defaults::perlin_amplitude};
 			Noise noise_{};
 
 		private:
 			template <typename... Args>
-			decimal_t eval_normalized_impl(Args &&... args) const
+			decimal_t eval_normalized_impl(Args &&... args) const UPROAR_NOEXCEPT
 			{
 				decimal_t result{0.0};
 				decimal_t amp{amplitude_};

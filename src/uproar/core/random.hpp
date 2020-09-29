@@ -1,6 +1,7 @@
 #ifndef UPROAR_CORE_RANDOM_HPP
 #define UPROAR_CORE_RANDOM_HPP
 
+#include "../config/config.hpp"
 #include "../core/attributes.hpp"
 #include <cstdint>
 #include <array>
@@ -59,27 +60,27 @@ namespace tc
 	class UPROAR_API random
 	{
 	public:
-		random() : previous{static_cast<uint32_t>(time(nullptr))}
+		random() UPROAR_NOEXCEPT : previous{static_cast<uint32_t>(time(nullptr))}
 		{
 			original = previous;
 		}
-		random(uint32_t seed) : previous{seed}, original{seed}
+		random(uint32_t seed) UPROAR_NOEXCEPT : previous{seed}, original{seed}
 		{
 		}
 
-		void reset()
+		void reset() UPROAR_NOEXCEPT
 		{
 			previous = original;
 		}
 
-		void reset(uint32_t seed)
+		void reset(uint32_t seed) UPROAR_NOEXCEPT
 		{
 			original = seed;
 			previous = seed;
 		}
 
 		template <typename T>
-		auto next(T max) const
+		auto next(T max) const UPROAR_NOEXCEPT
 		{
 			auto val = internal::uniform_distribution_n(previous);
 			if constexpr (std::is_integral_v<T>)
@@ -93,24 +94,24 @@ namespace tc
 		}
 
 		template <typename T>
-		auto next(T min, T max) const
+		auto next(T min, T max) const UPROAR_NOEXCEPT
 		{
 			return next(max - min) + min;
 		}
 
-		double next() const
+		double next() const UPROAR_NOEXCEPT
 		{
 			return internal::uniform_distribution_n(previous);
 		}
 
 		template <typename T>
-		auto uniform_distribution(T min, T max) const
+		auto uniform_distribution(T min, T max) const UPROAR_NOEXCEPT
 		{
 			return internal::uniform_distribution(previous, min, max);
 		}
 
 		template <typename T, size_t size, uint32_t seed>
-		static constexpr auto uniform_distribution(T min, T max)
+		static constexpr auto uniform_distribution(T min, T max) UPROAR_NOEXCEPT
 		{
 			return internal::uniform_distribution<T, size, seed>(min, max);
 		}
