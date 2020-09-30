@@ -61,19 +61,28 @@ namespace tc
 			decimal_t eval_impl(Args &&... args) const UPROAR_NOEXCEPT
 			{
 				auto m = multiplier_.eval(std::forward<Args>(args)...);
-				auto i = 0;
-				std::array<decimal_t, defaults::turbulence_max_sources> t{};
-				auto x = [this, m, &t, &i, pack = std::forward_as_tuple(args...)](const auto& y) {
-					auto tr = &(translations_[i]);
-					auto f = [tr](auto&& ... args) -> decimal_t {
-						return tr->eval(args...);
-					};
-					t[i++] = std::apply(f, std::move(pack)) * m;
+				
+				std::array<decimal_t, defaults::turbulence_max_sources> t{
+					std::forward<Args>(args)...
 				};
-				(x(args),...);
 
-				i = 0;
-				return source_.eval((std::forward<Args>(args) + t[i++])...);
+				for (auto j = 0; j < sizeof...(args); ++j) {
+					t[j] += translations_[j].eval(std::forward<Args>(args)...) * m;
+				}
+
+				return call<0, defaults::turbulence_max_sources>(source_, t);
+			}
+
+			template<uint8_t I, uint8_t Size, typename ...Args>
+			inline auto call(const task_source& func, std::array<decimal_t, Size>& ar, Args&&... args) const UPROAR_NOEXCEPT
+			{
+				if constexpr (I < Size) {
+					return call<I + 1>(func, ar, std::forward<Args>(args)..., ar[I]);
+				}
+				else
+				{
+					return func.eval(std::forward<Args>(args)...);
+				}
 			}
 			
 			task_source source_{};

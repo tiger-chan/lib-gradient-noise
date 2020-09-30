@@ -23,6 +23,7 @@ namespace tc
 		class UPROAR_API translate : public mutation_task
 		{
 		public:
+			enum class variable {x, y, z};
 			using decimal_t = UPROAR_DECIMAL_TYPE;
 
 			void set_source(task_source source)
@@ -30,10 +31,10 @@ namespace tc
 				source_ = std::move(source);
 			}
 
-			void set_translation(uint8_t source_index,  task_source source)
+			void set_translation(variable source_index,  task_source source)
 			{
-				UPROAR_ASSERT(source_index < defaults::translate_max_sources);
-				translations_[source_index] = std::move(source);
+				UPROAR_ASSERT(static_cast<uint8_t>(source_index) < defaults::translate_max_sources);
+				translations_[static_cast<uint8_t>(source_index)] = std::move(source);
 			}
 
 			decimal_t eval(decimal_t x) const override
@@ -55,25 +56,29 @@ namespace tc
 			template <typename... Args>
 			decimal_t eval_impl(Args &&... args) const UPROAR_NOEXCEPT
 			{
-				auto i = 0;
-				std::array<decimal_t, defaults::translate_max_sources> t{ };
-				auto x = [this, &t, &i, pack = std::forward_as_tuple(args...)](const auto& y) {
-					auto tr = &(translations_[i]);
-					auto f = [tr](auto&& ... args) -> decimal_t {
-						return tr->eval(args...);
-					};
-					t[i++] = std::apply(f, std::move(pack));
+				std::array<decimal_t, defaults::translate_max_sources> t{
+					std::forward<Args>(args)...
 				};
-				(x(args),...);
-				
-				// using expander = int8_t[];
-				// (void)expander{ (t[i] = translations_[i].eval(std::forward<Args>(args)...), args, ++i, void(), 0)... };
 
-				i = 0;
-				return source_.eval((std::forward<Args>(args) + t[i++])...);
+				for (auto i = 0; i < sizeof...(args); ++i)
+				{
+					t[i] += translations_[i].eval(std::forward<Args>(args)...);
+				}
+
+				return call<0, defaults::translate_max_sources>(source_, t);
 			}
 
-
+			template<uint8_t I, uint8_t Size, typename ...Args>
+			inline auto call(const task_source& func, std::array<decimal_t, Size>& ar, Args&&... args) const UPROAR_NOEXCEPT
+			{
+				if constexpr (I < Size) {
+					return call<I + 1>(func, ar, std::forward<Args>(args)..., ar[I]);
+				}
+				else
+				{
+					return func.eval(std::forward<Args>(args)...);
+				}
+			}
 
 
 			task_source source_;

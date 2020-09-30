@@ -5,6 +5,7 @@
 #include "perlin.hpp"
 #include "billowing.hpp"
 #include "ridged_multifractal.hpp"
+#include "gradient.hpp"
 
 // Mutation
 #include "scale_bias.hpp"
