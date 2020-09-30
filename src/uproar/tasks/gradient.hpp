@@ -19,8 +19,9 @@ namespace tc
 			static constexpr uint8_t gradient_max_dimensions{UPROAR_GRADIENT_MAX_DIMENSIONS};
 		} // namespace defaults
 
-		class UPROAR_API gradient : public generation_task
+		class UPROAR_API gradient : public generation<gradient>
 		{
+			friend class generation<gradient>;
 		public:
 			using decimal_t = UPROAR_DECIMAL_TYPE;
 
@@ -46,29 +47,14 @@ namespace tc
 					ac_size += (ac_[i] * ac_[i]);
 					points_[i] = std::move(p);
 				}
-			}
 
-			decimal_t eval(decimal_t x) const override
-			{
-				return eval_impl(x);
-			}
-
-			decimal_t eval(decimal_t x, decimal_t y) const override
-			{
-				return eval_impl(x, y);
-			}
-
-			decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const override
-			{
-				return eval_impl(x, y, z);
+				UPROAR_ASSERT(ac_size > decimal_t{0});
 			}
 
 		private:
 			std::array<component, defaults::gradient_max_dimensions> points_{};
 			std::array<decimal_t, defaults::gradient_max_dimensions> ac_{};
 			decimal_t ac_size{1};
-
-
 
 			template <typename... Args>
 			decimal_t eval_impl(Args &&... args) const UPROAR_NOEXCEPT

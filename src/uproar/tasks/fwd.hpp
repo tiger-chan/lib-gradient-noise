@@ -6,8 +6,8 @@ namespace tc
 	namespace task
 	{
 		class base_task;
-		class generation;
-		class mutation;
+		class generator_task;
+		class mutation_task;
 
 		struct task_source;
 		

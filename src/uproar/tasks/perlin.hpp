@@ -2,6 +2,7 @@
 #define UPROAR_TASKS_PERLIN_HPP
 
 #include "../config/config.hpp"
+#include "../core/noise_config.hpp"
 #include "fwd.hpp"
 #include "generation.hpp"
 
@@ -39,8 +40,9 @@ namespace tc
 		} // namespace defaults
 
 		template <typename Noise>
-		class UPROAR_API perlin : public generation_task
+		class UPROAR_API perlin : public generation<perlin<Noise>>
 		{
+			friend class generation<perlin<Noise>>;
 		public:
 			using octave_t = UPROAR_OCTAVE_TYPE;
 			using decimal_t = UPROAR_DECIMAL_TYPE;
@@ -72,95 +74,42 @@ namespace tc
 			{
 			}
 
-			perlin &set_octaves(octave_t octaves) UPROAR_NOEXCEPT
+			const noise_config& config() const
 			{
-				return octaves_ = octaves, *this;
+				return config_;
 			}
 
-			auto octaves() const UPROAR_NOEXCEPT
+			void set_config(const noise_config& config)
 			{
-				return octaves_;
+				config_ = config;
 			}
 
-			perlin &set_lacunarity(decimal_t lacunarity) UPROAR_NOEXCEPT
-			{
-				return lacunarity_ = lacunarity, *this;
-			}
-
-			auto lacunarity() const UPROAR_NOEXCEPT
-			{
-				return lacunarity_;
-			}
-
-			perlin &set_persistance(decimal_t persistance) UPROAR_NOEXCEPT
-			{
-				return persistance_ = persistance, *this;
-			}
-
-			auto persistance() const UPROAR_NOEXCEPT
-			{
-				return persistance_;
-			}
-
-			perlin &set_frequency(decimal_t frequency) UPROAR_NOEXCEPT
-			{
-				return frequency_ = frequency, *this;
-			}
-
-			auto frequency() const UPROAR_NOEXCEPT
-			{
-				return frequency_;
-			}
-
-			perlin &set_amplitude(decimal_t amplitude) UPROAR_NOEXCEPT
-			{
-				return amplitude_ = amplitude, *this;
-			}
-
-			auto amplitude() const UPROAR_NOEXCEPT
-			{
-				return amplitude_;
-			}
-
-			perlin &set_seed(uint32_t seed) UPROAR_NOEXCEPT
-			{
-				return noise_ = Noise{seed}, *this;
-			}
-
-			decimal_t eval(decimal_t x) const override
-			{
-				return eval_normalized_impl(x);
-			}
-
-			decimal_t eval(decimal_t x, decimal_t y) const override
-			{
-				return eval_normalized_impl(x, y);
-			}
-
-			decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const override
-			{
-				return eval_normalized_impl(x, y, z);
+			void set_seed(uint32_t seed) UPROAR_NOEXCEPT {
+				noise_ = Noise{seed};
 			}
 
 		protected:
-			UPROAR_OCTAVE_TYPE octaves_{defaults::perlin_octaves};
-			decimal_t lacunarity_{defaults::perlin_lacunarity};
-			decimal_t persistance_{defaults::perlin_persistance};
-			decimal_t frequency_{defaults::perlin_frequency};
-			decimal_t amplitude_{defaults::perlin_amplitude};
+			noise_config config_{
+				defaults::perlin_octaves,
+				defaults::perlin_lacunarity,
+				defaults::perlin_persistance,
+				defaults::perlin_frequency,
+				defaults::perlin_amplitude
+			};
+
 			Noise noise_{};
 
 		private:
 			template <typename... Args>
-			decimal_t eval_normalized_impl(Args &&... args) const UPROAR_NOEXCEPT
+			decimal_t eval_impl(Args &&... args) const UPROAR_NOEXCEPT
 			{
 				decimal_t result{0.0};
-				decimal_t amp{amplitude_};
-				decimal_t freq{frequency_};
+				decimal_t amp{config_.amplitude};
+				decimal_t freq{config_.frequency};
 
 				decimal_t weight{0};
 
-				for (auto octave = 0; octave < octaves_; ++octave)
+				for (auto octave = 0; octave < config_.octaves; ++octave)
 				{
 					auto tmp = noise_.eval((std::forward<Args>(args) * freq + octave)...) * amp;
 					result += tmp;
@@ -168,8 +117,8 @@ namespace tc
 					// used to normalize values generated.
 					weight += amp;
 
-					freq *= lacunarity_;
-					amp *= persistance_;
+					freq *= config_.lacunarity;
+					amp *= config_.persistance;
 				}
 				result /= weight;
 

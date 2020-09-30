@@ -20,4 +20,10 @@
 #		define UPROAR_DECIMAL_TYPE double
 #endif
 
-#endif
+namespace tc
+{
+	using octave_t = UPROAR_OCTAVE_TYPE;
+	using decimal_t = UPROAR_DECIMAL_TYPE;
+}
+
+#endif // UPROAR_CONFIG_CONFIG_HPP

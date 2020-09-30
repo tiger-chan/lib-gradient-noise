@@ -2,6 +2,7 @@
 #define UPROAR_TASKS_RIDGED_MULTIFRACTAL_HPP
 
 #include "../config/config.hpp"
+#include "../core/noise_config.hpp"
 #include "fwd.hpp"
 #include "generation.hpp"
 #include <array>
@@ -50,11 +51,18 @@ namespace tc
 		} // namespace defaults
 
 		template <typename Noise>
-		class UPROAR_API ridged_multifractal : public generation_task
+		class UPROAR_API ridged_multifractal : public generation<ridged_multifractal<Noise>>
 		{
+			friend class generation<ridged_multifractal<Noise>>;
 		public:
 			using octave_t = UPROAR_OCTAVE_TYPE;
 			using decimal_t = UPROAR_DECIMAL_TYPE;
+
+			struct UPROAR_API ridged_multi_config : public noise_config
+			{
+				decimal_t exponent{ defaults::ridged_multifractal_exponent };
+				decimal_t offset{ defaults::ridged_multifractal_offset };
+			};
 
 			struct correction
 			{
@@ -64,7 +72,7 @@ namespace tc
 
 			ridged_multifractal() UPROAR_NOEXCEPT
 			{
-				calc_weights();
+				calc_weights(config_);
 			}
 
 			ridged_multifractal(
@@ -73,15 +81,10 @@ namespace tc
 				decimal_t persistance = defaults::ridged_multifractal_persistance,
 				decimal_t frequency = defaults::ridged_multifractal_frequency,
 				decimal_t exponent = defaults::ridged_multifractal_exponent,
-				decimal_t offset = defaults::ridged_multifractal_exponent) UPROAR_NOEXCEPT
-				: octaves_{octaves},
-				  lacunarity_{lacunarity},
-				  persistance_{persistance},
-				  frequency_{frequency},
-				  exponent_{exponent},
-				  offset_{offset}
+				decimal_t offset = defaults::ridged_multifractal_offset) UPROAR_NOEXCEPT
+				: config_{ octaves, lacunarity, persistance, frequency, 0, exponent, offset }
 			{
-				calc_weights();
+				calc_weights(config_);
 			}
 
 			ridged_multifractal(
@@ -96,122 +99,75 @@ namespace tc
 			{
 			}
 
-			ridged_multifractal &set_octaves(octave_t octaves) UPROAR_NOEXCEPT
+			const ridged_multi_config& config() const
 			{
-				return octaves_ = octaves, *this;
+				return config_;
 			}
 
-			auto octaves() const UPROAR_NOEXCEPT
+			void set_config(const ridged_multi_config& config)
 			{
-				return octaves_;
+				if (config.lacunarity != config_.lacunarity
+				|| config.offset != config_.offset
+				|| config.exponent != config.exponent) {
+					calc_weights(config);
+				}
+				config_ = config;
 			}
 
-			ridged_multifractal &set_lacunarity(decimal_t lacunarity) UPROAR_NOEXCEPT
-			{
-				return lacunarity_ = lacunarity, calc_weights(), *this;
-			}
-
-			auto lacunarity() const UPROAR_NOEXCEPT
-			{
-				return lacunarity_;
-			}
-
-			ridged_multifractal &set_offset(decimal_t offset) UPROAR_NOEXCEPT
-			{
-				return offset_ = offset, calc_weights(), *this;
-			}
-
-			auto offset() const UPROAR_NOEXCEPT
-			{
-				return offset_;
-			}
-
-			ridged_multifractal &set_persistance(decimal_t persistance) UPROAR_NOEXCEPT
-			{
-				return persistance_ = persistance, *this;
-			}
-
-			auto persistance() const UPROAR_NOEXCEPT
-			{
-				return persistance_;
-			}
-
-			ridged_multifractal &set_frequency(decimal_t frequency) UPROAR_NOEXCEPT
-			{
-				return frequency_ = frequency, *this;
-			}
-
-			auto frequency() const UPROAR_NOEXCEPT
-			{
-				return frequency_;
-			}
-
-			ridged_multifractal &set_seed(uint32_t seed) UPROAR_NOEXCEPT
-			{
-				return noise_ = Noise{seed}, *this;
-			}
-
-			decimal_t eval(decimal_t x) const override
-			{
-				return eval_normalized_impl(x);
-			}
-
-			decimal_t eval(decimal_t x, decimal_t y) const override
-			{
-				return eval_normalized_impl(x, y);
-			}
-
-			decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const override
-			{
-				return eval_normalized_impl(x, y, z);
+			void set_seed(uint32_t seed) UPROAR_NOEXCEPT {
+				noise_ = Noise{seed};
 			}
 
 		protected:
-			UPROAR_OCTAVE_TYPE octaves_{defaults::ridged_multifractal_octaves};
-			decimal_t lacunarity_{defaults::ridged_multifractal_lacunarity};
-			decimal_t persistance_{defaults::ridged_multifractal_persistance};
-			decimal_t frequency_{defaults::ridged_multifractal_frequency};
-			decimal_t exponent_{defaults::ridged_multifractal_exponent};
-			decimal_t offset_{defaults::ridged_multifractal_offset};
+			ridged_multi_config config_{
+				defaults::ridged_multifractal_octaves,
+				defaults::ridged_multifractal_lacunarity,
+				defaults::ridged_multifractal_persistance,
+				defaults::ridged_multifractal_frequency,
+				0,
+				defaults::ridged_multifractal_exponent,
+				defaults::ridged_multifractal_offset,
+			};
+			Noise noise_{};
+
 			std::array<decimal_t, defaults::ridged_multifractal_max_octaves> weights_{};
 			std::array<correction, defaults::ridged_multifractal_max_octaves> corrections_{};
-			Noise noise_{};
 
 		private:
 			template <typename... Args>
-			decimal_t eval_normalized_impl(Args &&... args) const UPROAR_NOEXCEPT
+			decimal_t eval_impl(Args &&... args) const UPROAR_NOEXCEPT
 			{
 				decimal_t result{0.0};
-				decimal_t freq{frequency_};
+				decimal_t freq{config_.frequency};
 
-				for (auto octave = 0; octave < octaves_; ++octave)
+				for (auto octave = 0; octave < config_.octaves; ++octave)
 				{
 					auto tmp = noise_.eval((std::forward<Args>(args) * freq + octave)...);
-					tmp = offset_ - fabs(tmp);
+					tmp = config_.offset - fabs(tmp);
 					tmp *= tmp;
 
 					result += tmp * weights_[octave];
 
-					freq *= lacunarity_;
+					freq *= config_.lacunarity;
 				}
 
-				auto &corrections = corrections_[octaves_ - 1];
+				auto &corrections = corrections_[config_.octaves - 1];
 				return result * corrections.scale + corrections.bias;
 			}
 
-			void calc_weights() UPROAR_NOEXCEPT
+			void calc_weights(const ridged_multi_config& config) UPROAR_NOEXCEPT
 			{
 				static constexpr decimal_t one{1};
 				decimal_t min{0};
 				decimal_t max{0};
-				decimal_t freq{lacunarity_};
+				decimal_t freq{config.lacunarity};
 				for (auto i = 0; i < defaults::ridged_multifractal_max_octaves; ++i)
 				{
-					weights_[i] = pow(freq, -exponent_);
-					freq *= lacunarity_;
+					weights_[i] = pow(freq, -config.exponent);
+					freq *= config.lacunarity;
 
-					min += (offset_ - one) * (offset_ - one) * weights_[i];
-					max += offset_ * offset_ * weights_[i];
+					min += (config.offset - one) * (config.offset - one) * weights_[i];
+					max += config.offset * config.offset * weights_[i];
 					decimal_t a{-1}, b{1};
 					decimal_t scale = (b - a) / (max - min);
 					decimal_t bias = a - (min * scale);
