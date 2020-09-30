@@ -24,6 +24,16 @@ namespace tc
 {
 	using octave_t = UPROAR_OCTAVE_TYPE;
 	using decimal_t = UPROAR_DECIMAL_TYPE;
+	namespace math {
+		using variable_t = unsigned char;
+		enum class variable : unsigned char {
+			x, y, z
+		};
+
+		inline variable_t to_index(const variable& v) {
+			return static_cast<variable_t>(v);
+		}
+	}
 }
 
 #endif // UPROAR_CONFIG_CONFIG_HPP

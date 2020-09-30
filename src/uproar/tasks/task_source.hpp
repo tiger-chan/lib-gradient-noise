@@ -11,7 +11,6 @@ namespace tc
 	{
 		struct task_source
 		{
-			using decimal_t = UPROAR_DECIMAL_TYPE;
 			enum class source_type
 			{
 				task,
@@ -33,14 +32,14 @@ namespace tc
 				set(task);
 			}
 
-			task_source& set(decimal_t c) UPROAR_NOEXCEPT
+			inline task_source& set(decimal_t c) UPROAR_NOEXCEPT
 			{
 				source.value = c;
 				type = source_type::constant;
 				return *this;
 			}
 
-			task_source& set(base_task* t) UPROAR_NOEXCEPT
+			inline task_source& set(base_task* t) UPROAR_NOEXCEPT
 			{
 				UPROAR_ASSERT(t != nullptr);
 				source.task = t;
@@ -49,7 +48,7 @@ namespace tc
 			}
 
 			template <typename... Args>
-			decimal_t eval(Args &&... args) const UPROAR_NOEXCEPT
+			inline decimal_t eval(Args &&... args) const UPROAR_NOEXCEPT
 			{
 				switch (type)
 				{

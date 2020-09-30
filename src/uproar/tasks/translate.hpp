@@ -24,17 +24,16 @@ namespace tc
 		{
 			friend class mutation<translate>;
 		public:
-			enum class variable {x, y, z};
-
 			void set_source(task_source source)
 			{
 				source_ = std::move(source);
 			}
 
-			void set_translation(variable source_index,  task_source source)
+			void set_translation(math::variable var,  task_source source)
 			{
-				UPROAR_ASSERT(static_cast<uint8_t>(source_index) < defaults::translate_max_sources);
-				translations_[static_cast<uint8_t>(source_index)] = std::move(source);
+				auto i = math::to_index(var);
+				UPROAR_ASSERT(i < defaults::translate_max_sources);
+				translations_[i] = std::move(source);
 			}
 
 		private:

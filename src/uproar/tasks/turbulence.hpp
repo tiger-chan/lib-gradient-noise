@@ -34,10 +34,11 @@ namespace tc
 				multiplier_ = std::move(multiplier);
 			}
 
-			void set_translation(uint8_t source_index,  task_source source)
+			void set_translation(math::variable var,  task_source source)
 			{
-				UPROAR_ASSERT(source_index < defaults::turbulence_max_sources);
-				translations_[source_index] = std::move(source);
+				auto i = math::to_index(var);
+				UPROAR_ASSERT(i < defaults::turbulence_max_sources);
+				translations_[i] = std::move(source);
 			}
 			
 		private:
