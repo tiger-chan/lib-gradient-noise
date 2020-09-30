@@ -1,15 +1,13 @@
 #ifndef UPROAR_TASKS_TRANSLATE_HPP
 #define UPROAR_TASKS_TRANSLATE_HPP
 
+#include "../core/attributes.hpp"
 #include "../config/config.hpp"
+#include "../core/utlities.hpp"
 #include "fwd.hpp"
 #include "mutation.hpp"
 #include "task_source.hpp"
 #include <array>
-
-#ifndef UPROAR_TRANSLATE_MAX_SOURCES
-#define UPROAR_TRANSLATE_MAX_SOURCES 3
-#endif
 
 namespace tc
 {
@@ -17,7 +15,7 @@ namespace tc
 	{
 		namespace defaults
 		{
-			static constexpr uint32_t translate_max_sources{UPROAR_TRANSLATE_MAX_SOURCES};
+			static constexpr uint32_t translate_max_sources{UPROAR_MAX_VARIABLES};
 		}
 
 		class UPROAR_API translate : public mutation<translate>
@@ -49,21 +47,8 @@ namespace tc
 					t[i] += translations_[i].eval(std::forward<Args>(args)...);
 				}
 
-				return call<0, defaults::translate_max_sources>(source_, t);
+				return eval_with<0, defaults::translate_max_sources>(source_, t);
 			}
-
-			template<uint8_t I, uint8_t Size, typename ...Args>
-			inline auto call(const task_source& func, std::array<decimal_t, Size>& ar, Args&&... args) const UPROAR_NOEXCEPT
-			{
-				if constexpr (I < Size) {
-					return call<I + 1>(func, ar, std::forward<Args>(args)..., ar[I]);
-				}
-				else
-				{
-					return func.eval(std::forward<Args>(args)...);
-				}
-			}
-
 
 			task_source source_;
 			std::array<task_source, defaults::translate_max_sources> translations_{};

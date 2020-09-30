@@ -20,6 +20,10 @@
 #		define UPROAR_DECIMAL_TYPE double
 #endif
 
+#ifndef UPROAR_MAX_VARIABLES
+#		define UPROAR_MAX_VARIABLES 3
+#endif
+
 namespace tc
 {
 	using octave_t = UPROAR_OCTAVE_TYPE;

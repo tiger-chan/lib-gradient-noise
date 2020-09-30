@@ -12,5 +12,6 @@
 #include "selector.hpp"
 #include "translate.hpp"
 #include "turbulence.hpp"
+#include "scale.hpp"
 
 #endif // UPRAOR_TASKS_TASKS_HPP
