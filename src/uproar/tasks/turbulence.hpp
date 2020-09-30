@@ -20,11 +20,10 @@ namespace tc
 			static constexpr uint32_t turbulence_max_sources{UPROAR_TURBULENCE_MAX_SOURCES};
 		}
 
-		class UPROAR_API turbulence : public mutation_task
+		class UPROAR_API turbulence : public mutation<turbulence>
 		{
+			friend class mutation<turbulence>;
 		public:
-			using decimal_t = UPROAR_DECIMAL_TYPE;
-
 			void set_source(task_source source)
 			{
 				source_ = std::move(source);
@@ -40,22 +39,7 @@ namespace tc
 				UPROAR_ASSERT(source_index < defaults::turbulence_max_sources);
 				translations_[source_index] = std::move(source);
 			}
-
-			decimal_t eval(decimal_t x) const override
-			{
-				return eval_impl(x);
-			}
-
-			decimal_t eval(decimal_t x, decimal_t y) const override
-			{
-				return eval_impl(x, y);
-			}
-
-			decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const override
-			{
-				return eval_impl(x, y, z);
-			}
-
+			
 		private:
 			template <typename... Args>
 			decimal_t eval_impl(Args &&... args) const UPROAR_NOEXCEPT

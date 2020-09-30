@@ -25,11 +25,10 @@ namespace tc
 			static constexpr UPROAR_DECIMAL_TYPE scale_bias_bias{UPROAR_SCALE_BIAS_BIAS_DEFAULT};
 		}
 
-		class UPROAR_API scale_bias : public mutation_task
+		class UPROAR_API scale_bias : public mutation<scale_bias>
 		{
+			friend class mutation<scale_bias>;
 		public:
-			using decimal_t = UPROAR_DECIMAL_TYPE;
-
 			scale_bias() UPROAR_NOEXCEPT = default;
 			scale_bias(task_source src) UPROAR_NOEXCEPT : source_{std::move(src)}
 			{
@@ -53,22 +52,7 @@ namespace tc
 			void source(task_source source) {
 				source_ = std::move(source);
 			}
-
-			decimal_t eval(decimal_t x) const override
-			{
-				return eval_impl(x);
-			}
-
-			decimal_t eval(decimal_t x, decimal_t y) const override
-			{
-				return eval_impl(x, y);
-			}
-
-			decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const override
-			{
-				return eval_impl(x, y, z);
-			}
-
+			
 		private:
 			task_source source_{decimal_t{0}};
 			task_source scale_{defaults::scale_bias_scale};

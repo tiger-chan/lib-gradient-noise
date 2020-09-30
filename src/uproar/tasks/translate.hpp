@@ -20,11 +20,11 @@ namespace tc
 			static constexpr uint32_t translate_max_sources{UPROAR_TRANSLATE_MAX_SOURCES};
 		}
 
-		class UPROAR_API translate : public mutation_task
+		class UPROAR_API translate : public mutation<translate>
 		{
+			friend class mutation<translate>;
 		public:
 			enum class variable {x, y, z};
-			using decimal_t = UPROAR_DECIMAL_TYPE;
 
 			void set_source(task_source source)
 			{
@@ -35,21 +35,6 @@ namespace tc
 			{
 				UPROAR_ASSERT(static_cast<uint8_t>(source_index) < defaults::translate_max_sources);
 				translations_[static_cast<uint8_t>(source_index)] = std::move(source);
-			}
-
-			decimal_t eval(decimal_t x) const override
-			{
-				return eval_impl(x);
-			}
-
-			decimal_t eval(decimal_t x, decimal_t y) const override
-			{
-				return eval_impl(x, y);
-			}
-
-			decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const override
-			{
-				return eval_impl(x, y, z);
 			}
 
 		private:
