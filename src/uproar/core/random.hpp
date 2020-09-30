@@ -9,13 +9,26 @@
 #include <ctime>
 #include "algorithm.hpp"
 
+#ifndef UPROAR_CORE_RANDOM_LCE_A
+#	define UPROAR_CORE_RANDOM_LCE_A 4096
+#endif
+
+#ifndef UPROAR_CORE_RANDOM_LCE_C
+#	define UPROAR_CORE_RANDOM_LCE_C 150889
+#endif
+
+#ifndef UPROAR_CORE_RANDOM_LCE_M
+#	define UPROAR_CORE_RANDOM_LCE_M 714025
+#endif
+
 namespace tc
 {
 	namespace internal
 	{
-		static constexpr int32_t lce_a = 4096;
-		static constexpr int32_t lce_c = 150889;
-		static constexpr int32_t lce_m = 714025;
+		// https://en.wikipedia.org/wiki/Linear_congruential_generator
+		static constexpr int32_t lce_a = UPROAR_CORE_RANDOM_LCE_A;
+		static constexpr int32_t lce_c = UPROAR_CORE_RANDOM_LCE_C;
+		static constexpr int32_t lce_m = UPROAR_CORE_RANDOM_LCE_M;
 
 		constexpr static uint32_t uniform_distribution(uint32_t &previous)
 		{
