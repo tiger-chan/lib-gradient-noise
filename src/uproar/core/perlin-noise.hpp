@@ -5,6 +5,7 @@
 #include "../core/attributes.hpp"
 #include <array>
 #include "algorithm.hpp"
+#include "curve_blend.hpp"
 #include "random.hpp"
 
 namespace tc
@@ -79,6 +80,7 @@ namespace tc
 		}
 	} // namespace internal
 
+	template <typename Blend>
 	class UPROAR_API perlin_noise
 	{
 	public:
@@ -203,23 +205,23 @@ namespace tc
 				grad(perm[BB + 1], x1, y1, z1),
 				u);
 
-			auto lv1 = lerp( lu1, lu2, v);
-			auto lv2 = lerp( lu3, lu4, v);
+			auto lv1 = lerp(lu1, lu2, v);
+			auto lv2 = lerp(lu3, lu4, v);
 
 			return lerp(lv1, lv2, w);
 		}
 
 	private:
-		static double fade(double t) UPROAR_NOEXCEPT
+		double fade(double t) const UPROAR_NOEXCEPT
 		{
-			return quintic_curve(t);
+			return blender(t);
 		}
 
 		static double grad(int32_t hash, double x) UPROAR_NOEXCEPT
 		{
 			static constexpr auto grad = internal::perlin_gradiant_1d();
 			int h = hash & 15; // Convert lo 4 bits of hash code
-			return grad[h];// * x;
+			return grad[h];	   // * x;
 		}
 
 		static double grad(int32_t hash, double x, double y) UPROAR_NOEXCEPT
@@ -227,22 +229,14 @@ namespace tc
 			int32_t h = hash & 7; // Convert lo 3 bits of hash code
 			switch (h)
 			{
-			case 0:
-				return x;
-			case 1:
-				return x + y;
-			case 2:
-				return y;
-			case 3:
-				return -x + y;
-			case 4:
-				return -x;
-			case 5:
-				return -x - y;
-			case 6:
-				return -y;
-			case 7:
-				return x - y;
+			case 0: return x;
+			case 1: return x + y;
+			case 2: return y;
+			case 3: return -x + y;
+			case 4: return -x;
+			case 5: return -x - y;
+			case 6: return -y;
+			case 7: return x - y;
 			}
 
 			return 0;
@@ -250,28 +244,29 @@ namespace tc
 
 		double grad(int hash, double x, double y, double z) const UPROAR_NOEXCEPT
 		{
-			switch(hash & 15)
+			switch (hash & 15)
 			{
-				// 12 cube midpoints
-				case 0: return x + z;
-				case 1: return x + y;
-				case 2: return y + z;
-				case 3: return -x + y;
-				case 4: return -x + z;
-				case 5: return -x - y;
-				case 6: return -y + z;
-				case 7: return x - y;
-				case 8: return x - z;
-				case 9: return y - z;
-				case 10: return -x - z;
-				case 11: return -y - z;
-				// 4 vertices of regular tetrahedron
-				case 12: return x + y;
-				case 13: return -x + y;
-				case 14: return -y + z;
-				case 15: return -y - z;
-				// This can't happen
-				default: return 0;
+			// 12 cube midpoints
+			case 0: return x + z;
+			case 1: return x + y;
+			case 2: return y + z;
+			case 3: return -x + y;
+			case 4: return -x + z;
+			case 5: return -x - y;
+			case 6: return -y + z;
+			case 7: return x - y;
+			case 8: return x - z;
+			case 9: return y - z;
+			case 10: return -x - z;
+			case 11: return -y - z;
+			// 4 vertices of regular tetrahedron
+			case 12: return x + y;
+			case 13: return -x + y;
+			case 14: return -y + z;
+			case 15: return -y - z;
+			// This can't happen
+			default:
+				return 0;
 			}
 
 			// https://mrl.nyu.edu/~perlin/noise/
@@ -285,8 +280,11 @@ namespace tc
 
 		static constexpr int32_t index_mask = 255;
 		std::array<int32_t, 512> perm;
-	}; // namespace tc
-} // namespace tc
+		Blend blender{};
+	};
 
+	using perlin_cubic = perlin_noise<cubic_blend>;
+	using perlin_quintic = perlin_noise<quintic_blend>;
+} // namespace tc
 
 #endif // UPROAR_CORE_PERLIN_NOISE_HPP

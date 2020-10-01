@@ -5,6 +5,7 @@
 
 namespace tc
 {
+	template<typename Blender>
 	class perlin_noise;
 	class random;
 }

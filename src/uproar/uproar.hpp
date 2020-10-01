@@ -7,7 +7,7 @@
 
 namespace tc
 {
-	static const perlin_noise perlin{};
+	static const perlin_quintic perlin{};
 }
 
 #endif // UPROAR_UPROAR_HPP
