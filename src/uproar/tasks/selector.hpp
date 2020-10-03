@@ -35,76 +35,110 @@ namespace tc
 
 			selector() UPROAR_NOEXCEPT = default;
 
-			selector(task_source selector, task_source src0, task_source src1) UPROAR_NOEXCEPT : selector_{std::move(selector)},
-																								 source_0_{std::move(src0)},
-																								 source_1_{std::move(src1)}
+			selector(task_source control, task_source low, task_source high) UPROAR_NOEXCEPT : switch_{std::move(control)},
+																								 low_{std::move(low)},
+																								 high_{std::move(high)}
 			{
 			}
 
 			selector(
-				const task_source &selector,
-				const task_source &src0,
-				const task_source &src1,
+				const task_source &control,
+				const task_source &low,
+				const task_source &high,
 				task_source threshold,
-				task_source falloff = task_source{defaults::selector_falloff}) UPROAR_NOEXCEPT : selector(selector, src0, src1),
+				task_source falloff = task_source{defaults::selector_falloff}) UPROAR_NOEXCEPT : selector(control, low, high),
 																								 threshold_{std::move(threshold)},
 																								 falloff_{std::move(falloff)}
 
 			{
 			}
 
-			void set_selector(task_source selector) UPROAR_NOEXCEPT
+			void configure(const json::object& obj, configure_callback& callback) final
 			{
-				selector_ = std::move(selector);
+				static const std::string switch_key{"switch"};
+				static const std::string low_key{"low"};
+				static const std::string high_key{"high"};
+				static const std::string threshold_key{"threshold"};
+				static const std::string falloff_key{"falloff"};
+
+				auto end = std::end(obj);
+				auto src_it = obj.find(switch_key);
+				if (src_it != end) {
+					auto src = callback.eval(src_it->second);
+					switch_ = *src;
+				}
+
+				src_it = obj.find(low_key);
+				if (src_it != end) {
+					auto src = callback.eval(src_it->second);
+					low_ = *src;
+				}
+
+				src_it = obj.find(high_key);
+				if (src_it != end) {
+					auto src = callback.eval(src_it->second);
+					high_ = *src;
+				}
+
+				src_it = obj.find(threshold_key);
+				if (src_it != end) {
+					auto src = callback.eval(src_it->second);
+					threshold_ = *src;
+				}
+
+				src_it = obj.find(falloff_key);
+				if (src_it != end) {
+					auto src = callback.eval(src_it->second);
+					falloff_ = *src;
+				}
 			}
 
-			void set_source_0(task_source source) UPROAR_NOEXCEPT
+			void set_switch(task_source src) UPROAR_NOEXCEPT
 			{
-				source_0_ = std::move(source);
+				switch_ = std::move(src);
 			}
 
-			void set_source_1(task_source source) UPROAR_NOEXCEPT
+			void set_low(task_source src) UPROAR_NOEXCEPT
 			{
-				source_1_ = std::move(source);
+				low_ = std::move(src);
 			}
 
-			void set_threshold(task_source threshold) UPROAR_NOEXCEPT
+			void set_high(task_source src) UPROAR_NOEXCEPT
 			{
-				threshold_ = std::move(threshold);
+				high_ = std::move(src);
 			}
 
-			void set_falloff(task_source falloff) UPROAR_NOEXCEPT
+			void set_threshold(task_source src) UPROAR_NOEXCEPT
 			{
-				falloff_ = std::move(falloff);
+				threshold_ = std::move(src);
 			}
 
-			decimal_t eval(decimal_t x) const override
+			void set_falloff(task_source src) UPROAR_NOEXCEPT
+			{
+				falloff_ = std::move(src);
+			}
+
+			decimal_t eval(decimal_t x) const final
 			{
 				return eval_impl(x);
 			}
 
-			decimal_t eval(decimal_t x, decimal_t y) const override
+			decimal_t eval(decimal_t x, decimal_t y) const final
 			{
 				return eval_impl(x, y);
 			}
 
-			decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const override
+			decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const final
 			{
 				return eval_impl(x, y, z);
 			}
 
 		private:
-			task_source source_0_{decimal_t{-1}};
-			task_source source_1_{decimal_t{1}};
-			task_source selector_{decimal_t{0.5}};
-			task_source threshold_{defaults::selector_threshold};
-			task_source falloff_{defaults::selector_falloff};
-			Blender blender{};
 
 			template <typename... Args>
 			decimal_t eval_impl(Args &&... args) const UPROAR_NOEXCEPT
 			{
-				auto s = selector_.eval(std::forward<Args>(args)...);
+				auto s = switch_.eval(std::forward<Args>(args)...);
 				auto f = falloff_.eval(std::forward<Args>(args)...);
 				auto t = threshold_.eval(std::forward<Args>(args)...);
 
@@ -113,10 +147,10 @@ namespace tc
 				{
 					if (s < t)
 					{
-						auto s0 = source_0_.eval(std::forward<Args>(args)...);
+						auto s0 = low_.eval(std::forward<Args>(args)...);
 						return s0;
 					}
-					auto s1 = source_1_.eval(std::forward<Args>(args)...);
+					auto s1 = high_.eval(std::forward<Args>(args)...);
 					return s1;
 				}
 
@@ -126,7 +160,7 @@ namespace tc
 				auto lb = t - f;
 				if (s < lb)
 				{
-					auto s0 = source_0_.eval(std::forward<Args>(args)...);
+					auto s0 = low_.eval(std::forward<Args>(args)...);
 					return s0;
 				}
 
@@ -134,17 +168,24 @@ namespace tc
 				auto ub = t + f;
 				if (s > ub)
 				{
-					auto s1 = source_1_.eval(std::forward<Args>(args)...);
+					auto s1 = high_.eval(std::forward<Args>(args)...);
 					return s1;
 				}
 
 				// blend
 				auto b = blender((s - lb) / (ub - lb));
-				auto s0 = source_0_.eval(std::forward<Args>(args)...);
-				auto s1 = source_1_.eval(std::forward<Args>(args)...);
+				auto s0 = low_.eval(std::forward<Args>(args)...);
+				auto s1 = high_.eval(std::forward<Args>(args)...);
 				auto r = lerp(s0, s1, b);
 				return r;
 			}
+
+			task_source low_{decimal_t{-1}};
+			task_source high_{decimal_t{1}};
+			task_source switch_{decimal_t{0.5}};
+			task_source threshold_{defaults::selector_threshold};
+			task_source falloff_{defaults::selector_falloff};
+			Blender blender{};
 		};
 
 		using selector_cubic = selector<cubic_blend>;

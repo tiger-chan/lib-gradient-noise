@@ -70,6 +70,21 @@ namespace tc
 			{
 			}
 
+			void configure(const json::object& obj, configure_callback& callback) final
+			{
+				static const std::string seed_key{"seed"};
+
+				auto src_it = obj.find(seed_key);
+				if (src_it != std::end(obj))
+				{
+					set_seed(src_it->second.as<uint32_t>());
+				}
+
+				auto config = config_;
+				config.configure(obj);
+				set_config(config);
+			}
+
 			const noise_config& config() const
 			{
 				return config_;

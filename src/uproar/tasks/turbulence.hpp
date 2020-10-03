@@ -54,7 +54,7 @@ namespace tc
 					t[j] += translations_[j].eval(std::forward<Args>(args)...) * m;
 				}
 
-				return eval_with<0, defaults::turbulence_max_sources>(source_, t);
+				return eval_with<0, sizeof...(args)>(source_, t);
 			}
 
 			task_source source_{};

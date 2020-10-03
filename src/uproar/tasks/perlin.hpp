@@ -74,6 +74,21 @@ namespace tc
 			{
 			}
 
+			void configure(const json::object& obj, configure_callback& callback) final
+			{
+				static const std::string seed_key{"seed"};
+
+				auto src_it = obj.find(seed_key);
+				if (src_it != std::end(obj))
+				{
+					set_seed(src_it->second.as<uint32_t>());
+				}
+
+				auto config = config_;
+				config.configure(obj);
+				set_config(config);
+			}
+
 			const noise_config& config() const
 			{
 				return config_;
@@ -87,17 +102,6 @@ namespace tc
 			void set_seed(uint32_t seed) UPROAR_NOEXCEPT {
 				noise_ = Noise{seed};
 			}
-
-		protected:
-			noise_config config_{
-				defaults::perlin_octaves,
-				defaults::perlin_lacunarity,
-				defaults::perlin_persistance,
-				defaults::perlin_frequency,
-				defaults::perlin_amplitude
-			};
-
-			Noise noise_{};
 
 		private:
 			template <typename... Args>
@@ -124,6 +128,16 @@ namespace tc
 
 				return result;
 			}
+
+			noise_config config_{
+				defaults::perlin_octaves,
+				defaults::perlin_lacunarity,
+				defaults::perlin_persistance,
+				defaults::perlin_frequency,
+				defaults::perlin_amplitude
+			};
+
+			Noise noise_{};
 		};
 	} // namespace task
 } // namespace tc

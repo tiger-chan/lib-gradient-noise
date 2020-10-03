@@ -27,6 +27,29 @@ namespace tc
 				scalars_.fill(1.0);
 			}
 
+			void configure(const json::object& obj, configure_callback& callback) final
+			{
+				static const std::string source_key{"source"};
+				static const std::string scale_key{"scale"};
+				static const std::string bias_key{"bias"};
+
+				auto end = std::end(obj);
+				auto src_it = obj.find(source_key);
+				if (src_it != end) {
+					auto src = callback.eval(src_it->second);
+					source_ = *src;
+				}
+
+				for (auto i = 0; i < defaults::scale_max_sources; ++i)
+				{
+					auto variable_it = obj.find(math::to_c_str(static_cast<math::variable>(i)));
+					if (variable_it != end) {
+						auto src = callback.eval(variable_it->second);
+						scalars_[i] = *src;
+					}
+				}
+			}
+
 			void set_source(task_source source)
 			{
 				source_ = std::move(source);
@@ -49,10 +72,11 @@ namespace tc
 
 				for (auto i = 0; i < sizeof...(args); ++i)
 				{
-					t[i] *= scalars_[i].eval(std::forward<Args>(args)...);
+					auto d = scalars_[i].eval(std::forward<Args>(args)...);
+					t[i] *= d;
 				}
 
-				return eval_with<0, defaults::scale_max_sources>(source_, t);
+				return eval_with<0, sizeof...(args)>(source_, t);
 			}
 
 			task_source source_;

@@ -37,6 +37,16 @@ namespace tc
 		inline variable_t to_index(const variable& v) {
 			return static_cast<variable_t>(v);
 		}
+
+		inline const char* to_c_str(const variable& v) {
+			switch (v)
+			{
+			case variable::x: return "x";
+			case variable::y: return "y";
+			case variable::z: return "z";
+			default: return "\0";
+			}
+		}
 	}
 }
 

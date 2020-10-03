@@ -62,6 +62,25 @@ namespace tc
 			{
 				decimal_t exponent{ defaults::ridged_multifractal_exponent };
 				decimal_t offset{ defaults::ridged_multifractal_offset };
+				
+				void ex_configure(const json::object& obj)
+				{
+					static const std::string exponent_key{"exponent"};
+					static const std::string offset_key{"exponent"};
+
+					auto end = std::end(obj);
+					auto exp = obj.find(exponent_key);
+					if (exp != end) {
+						exponent = exp->second.as<decimal_t>();
+					}
+
+					auto off = obj.find(offset_key);
+					if (off != end) {
+						offset = off->second.as<decimal_t>();
+					}
+
+					configure(obj);	
+				}
 			};
 
 			struct correction
@@ -99,6 +118,21 @@ namespace tc
 			{
 			}
 
+			void configure(const json::object& obj, configure_callback& callback) final
+			{
+				static const std::string seed_key{"seed"};
+
+				auto src_it = obj.find(seed_key);
+				if (src_it != std::end(obj))
+				{
+					set_seed(src_it->second.as<uint32_t>());
+				}
+				
+				auto config = config_;
+				config.ex_configure(obj);
+				set_config(config);
+			}
+
 			const ridged_multi_config& config() const
 			{
 				return config_;
@@ -117,21 +151,6 @@ namespace tc
 			void set_seed(uint32_t seed) UPROAR_NOEXCEPT {
 				noise_ = Noise{seed};
 			}
-
-		protected:
-			ridged_multi_config config_{
-				defaults::ridged_multifractal_octaves,
-				defaults::ridged_multifractal_lacunarity,
-				defaults::ridged_multifractal_persistance,
-				defaults::ridged_multifractal_frequency,
-				0,
-				defaults::ridged_multifractal_exponent,
-				defaults::ridged_multifractal_offset,
-			};
-			Noise noise_{};
-
-			std::array<decimal_t, defaults::ridged_multifractal_max_octaves> weights_{};
-			std::array<correction, defaults::ridged_multifractal_max_octaves> corrections_{};
 
 		private:
 			template <typename... Args>
@@ -174,6 +193,20 @@ namespace tc
 					corrections_[i] = correction{scale, bias};
 				}
 			}
+
+			ridged_multi_config config_{
+				defaults::ridged_multifractal_octaves,
+				defaults::ridged_multifractal_lacunarity,
+				defaults::ridged_multifractal_persistance,
+				defaults::ridged_multifractal_frequency,
+				0,
+				defaults::ridged_multifractal_exponent,
+				defaults::ridged_multifractal_offset,
+			};
+			Noise noise_{};
+
+			std::array<decimal_t, defaults::ridged_multifractal_max_octaves> weights_{};
+			std::array<correction, defaults::ridged_multifractal_max_octaves> corrections_{};
 		};
 	} // namespace task
 } // namespace tc

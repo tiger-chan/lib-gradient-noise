@@ -41,6 +41,32 @@ namespace tc
 			{
 			}
 
+			void configure(const json::object& obj, configure_callback& callback) final
+			{
+				static const std::string source_key{"source"};
+				static const std::string scale_key{"scale"};
+				static const std::string bias_key{"bias"};
+
+				auto end = std::end(obj);
+				auto src_it = obj.find(source_key);
+				if (src_it != end) {
+					auto src = callback.eval(src_it->second);
+					source_ = *src;
+				}
+
+				auto scale_it = obj.find(scale_key);
+				if (scale_it != end) {
+					auto src = callback.eval(scale_it->second);
+					scale_ = *src;
+				}
+
+				auto bias_it = obj.find(bias_key);
+				if (bias_it != end) {
+					auto src = callback.eval(bias_it->second);
+					bias_ = *src;
+				}
+			}
+
 			void scale(task_source scale) {
 				scale_ = std::move(scale);
 			}

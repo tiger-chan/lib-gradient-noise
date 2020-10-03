@@ -43,7 +43,7 @@ namespace tc
 						v2[i]
 					};
 
-					ac_[i] = p._0 - p._1;
+					ac_[i] = p._1 - p._0;
 					ac_size += (ac_[i] * ac_[i]);
 					points_[i] = std::move(p);
 				}
@@ -51,18 +51,44 @@ namespace tc
 				UPROAR_ASSERT(ac_size > decimal_t{0});
 			}
 
-		private:
-			std::array<component, defaults::gradient_max_dimensions> points_{};
-			std::array<decimal_t, defaults::gradient_max_dimensions> ac_{};
-			decimal_t ac_size{1};
+			void configure(const json::object& obj, configure_callback& callback) final
+			{
+				std::array<decimal_t, defaults::gradient_max_dimensions> l{};
+				std::array<decimal_t, defaults::gradient_max_dimensions> r{};
+				l.fill(0.0);
+				r.fill(0.0);
 
+				auto end = std::end(obj);
+				for (auto i = 0; i < defaults::gradient_max_dimensions; ++i)
+				{
+					std::string var { math::to_c_str(static_cast<math::variable>(i)) };
+					auto var1 = var + "1";
+					auto var2 = var + "2";
+
+					auto variable_it = obj.find(var1);
+					if (variable_it != end) {
+						auto src = variable_it->second.as<decimal_t>();
+						l[i] = src;
+					}
+
+					variable_it = obj.find(var2);
+					if (variable_it != end) {
+						auto src = variable_it->second.as<decimal_t>();
+						r[i] = src;
+					}
+				}
+
+				set(l, r);
+			}
+
+		private:
 			template <typename... Args>
 			decimal_t eval_impl(Args &&... args) const UPROAR_NOEXCEPT
 			{
 				std::array<decimal_t, defaults::gradient_max_dimensions> ab{};
 
 				auto i = 0;
-				((ab[i++] = args - points_[i]._1),...);
+				((ab[i++] = args - points_[i]._0),...);
 
 				decimal_t ac_X_ab{0};
 				for (auto j = 0; j < defaults::gradient_max_dimensions; ++j) {
@@ -76,6 +102,10 @@ namespace tc
 
 				return result;
 			}
+
+			std::array<component, defaults::gradient_max_dimensions> points_{};
+			std::array<decimal_t, defaults::gradient_max_dimensions> ac_{};
+			decimal_t ac_size{1};
 		};
 	} // namespace task
 } // namespace tc
