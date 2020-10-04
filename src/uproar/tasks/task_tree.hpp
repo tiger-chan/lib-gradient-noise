@@ -17,8 +17,11 @@
 
 #include "map_range.hpp"
 #include "scale_bias.hpp"
-#include "scale.hpp"
-#include "translate.hpp"
+#include "scale_domain.hpp"
+#include "translate_domain.hpp"
+#include "bias.hpp"
+
+#include "multiply.hpp"
 
 #include "selector.hpp"
 #include "cache.hpp"
@@ -41,10 +44,12 @@ namespace tc
 					instance.record<gradient>(std::string("gradient"));
 					instance.record<map_range>("map_range");
 					instance.record<scale_bias>("scale_bias");
-					instance.record<scale>("scale");
-					instance.record<translate>("translate");
+					instance.record<scale_domain>("scale");
+					instance.record<translate_domain>("translate");
+					instance.record<bias_task>("bias");
 					instance.record<selector_quintic>("selector");
 					instance.record<cache>("cache");
+					instance.record<multiply>("multiply");
 
 					registered = true;
 				}

@@ -10,9 +10,12 @@
 // Mutation
 #include "tasks/scale_bias.hpp"
 #include "tasks/selector.hpp"
-#include "tasks/translate.hpp"
+#include "tasks/translate_domain.hpp"
 #include "tasks/turbulence.hpp"
-#include "tasks/scale.hpp"
+#include "tasks/scale_domain.hpp"
+#include "tasks/scale_bias.hpp"
+
+#include "tasks/multiply.hpp"
 
 #include "tasks/task_factory.hpp"
 #include "tasks/task_tree.hpp"
