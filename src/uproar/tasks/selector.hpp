@@ -36,8 +36,8 @@ namespace tc
 			selector() UPROAR_NOEXCEPT = default;
 
 			selector(task_source control, task_source low, task_source high) UPROAR_NOEXCEPT : switch_{std::move(control)},
-																								 low_{std::move(low)},
-																								 high_{std::move(high)}
+																							   low_{std::move(low)},
+																							   high_{std::move(high)}
 			{
 			}
 
@@ -51,46 +51,6 @@ namespace tc
 																								 falloff_{std::move(falloff)}
 
 			{
-			}
-
-			void configure(const json::object& obj, configure_callback& callback) final
-			{
-				static const std::string switch_key{"switch"};
-				static const std::string low_key{"low"};
-				static const std::string high_key{"high"};
-				static const std::string threshold_key{"threshold"};
-				static const std::string falloff_key{"falloff"};
-
-				auto end = std::end(obj);
-				auto src_it = obj.find(switch_key);
-				if (src_it != end) {
-					auto src = callback.eval(src_it->second);
-					switch_ = *src;
-				}
-
-				src_it = obj.find(low_key);
-				if (src_it != end) {
-					auto src = callback.eval(src_it->second);
-					low_ = *src;
-				}
-
-				src_it = obj.find(high_key);
-				if (src_it != end) {
-					auto src = callback.eval(src_it->second);
-					high_ = *src;
-				}
-
-				src_it = obj.find(threshold_key);
-				if (src_it != end) {
-					auto src = callback.eval(src_it->second);
-					threshold_ = *src;
-				}
-
-				src_it = obj.find(falloff_key);
-				if (src_it != end) {
-					auto src = callback.eval(src_it->second);
-					falloff_ = *src;
-				}
 			}
 
 			void set_switch(task_source src) UPROAR_NOEXCEPT
@@ -134,7 +94,6 @@ namespace tc
 			}
 
 		private:
-
 			template <typename... Args>
 			decimal_t eval_impl(Args &&... args) const UPROAR_NOEXCEPT
 			{
@@ -186,6 +145,55 @@ namespace tc
 			task_source threshold_{defaults::selector_threshold};
 			task_source falloff_{defaults::selector_falloff};
 			Blender blender{};
+		};
+
+		template <typename Blender>
+		struct config<selector<Blender>>
+		{
+			void operator()(selector<Blender> &task, const json::object &obj, configure_callback &callback) const
+			{
+				static const std::string switch_key{"switch"};
+				static const std::string low_key{"low"};
+				static const std::string high_key{"high"};
+				static const std::string threshold_key{"threshold"};
+				static const std::string falloff_key{"falloff"};
+
+				auto end = std::end(obj);
+				auto src_it = obj.find(switch_key);
+				if (src_it != end)
+				{
+					auto src = callback.eval(src_it->second);
+					task.set_switch(*src);
+				}
+
+				src_it = obj.find(low_key);
+				if (src_it != end)
+				{
+					auto src = callback.eval(src_it->second);
+					task.set_low(*src);
+				}
+
+				src_it = obj.find(high_key);
+				if (src_it != end)
+				{
+					auto src = callback.eval(src_it->second);
+					task.set_high(*src);
+				}
+
+				src_it = obj.find(threshold_key);
+				if (src_it != end)
+				{
+					auto src = callback.eval(src_it->second);
+					task.set_threshold(*src);
+				}
+
+				src_it = obj.find(falloff_key);
+				if (src_it != end)
+				{
+					auto src = callback.eval(src_it->second);
+					task.set_falloff(*src);
+				}
+			}
 		};
 
 		using selector_cubic = selector<cubic_blend>;

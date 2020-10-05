@@ -14,23 +14,23 @@ namespace tc
 		public:
 		};
 
-		template<typename Task>
+		template <typename Task>
 		class UPROAR_API mutation : public mutation_task
 		{
 		public:
 			decimal_t eval(decimal_t x) const final
 			{
-				return static_cast<const Task*>(this)->eval_impl(x);
+				return static_cast<const Task *>(this)->eval_impl(x);
 			}
 
 			decimal_t eval(decimal_t x, decimal_t y) const final
 			{
-				return static_cast<const Task*>(this)->eval_impl(x, y);
+				return static_cast<const Task *>(this)->eval_impl(x, y);
 			}
 
 			decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const final
 			{
-				return static_cast<const Task*>(this)->eval_impl(x, y, z);
+				return static_cast<const Task *>(this)->eval_impl(x, y, z);
 			}
 		};
 	} // namespace task

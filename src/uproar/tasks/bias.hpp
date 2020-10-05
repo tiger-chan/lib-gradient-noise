@@ -29,7 +29,7 @@ namespace tc
 			static constexpr UPROAR_DECIMAL_TYPE bias_bias{UPROAR_BIAS_BIAS_DEFAULT};
 			static constexpr UPROAR_DECIMAL_TYPE bias_exponent_min{UPROAR_BIAS_EXPONENT_MIN};
 			static constexpr UPROAR_DECIMAL_TYPE bias_exponent_max{UPROAR_BIAS_EXPONENT_MAX};
-		}
+		} // namespace defaults
 
 		class UPROAR_API bias_task : public mutation<bias_task>
 		{
@@ -43,27 +43,6 @@ namespace tc
 
 			bias_task(task_source src, task_source bias) UPROAR_NOEXCEPT : source_{std::move(src)}, bias_{std::move(bias)}
 			{
-			}
-
-			void configure(const json::object &obj, configure_callback &callback) final
-			{
-				static const std::string source_key{"source"};
-				static const std::string bias_key{"bias"};
-
-				auto end = std::end(obj);
-				auto src_it = obj.find(source_key);
-				if (src_it != end)
-				{
-					auto src = callback.eval(src_it->second);
-					source_ = *src;
-				}
-
-				auto bias_it = obj.find(bias_key);
-				if (bias_it != end)
-				{
-					auto src = callback.eval(bias_it->second);
-					bias_ = *src;
-				}
 			}
 
 			void bias(task_source src)
@@ -88,6 +67,31 @@ namespace tc
 				// ease in out with higher exponents will push the values further towards the extremes
 				auto p = (b * defaults::bias_exponent_max) + defaults::bias_exponent_min;
 				return ease_in_out(v, p);
+			}
+		};
+
+		template <>
+		struct config<bias_task>
+		{
+			void operator()(bias_task &task, const json::object &obj, configure_callback &callback) const
+			{
+				static const std::string source_key{"source"};
+				static const std::string bias_key{"bias"};
+
+				auto end = std::end(obj);
+				auto src_it = obj.find(source_key);
+				if (src_it != end)
+				{
+					auto src = callback.eval(src_it->second);
+					task.source(*src);
+				}
+
+				auto bias_it = obj.find(bias_key);
+				if (bias_it != end)
+				{
+					auto src = callback.eval(bias_it->second);
+					task.bias(*src);
+				}
 			}
 		};
 	} // namespace task

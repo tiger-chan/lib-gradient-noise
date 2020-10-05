@@ -22,8 +22,6 @@ namespace tc
 		public:
 			virtual ~base_task() = default;
 			
-			virtual void configure(const json::object& obj, configure_callback& callback) {}
-
 			virtual decimal_t eval(decimal_t x) const { return 0; }
 			virtual decimal_t eval(decimal_t x, decimal_t y) const { return 0; }
 			virtual decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const { return 0; }

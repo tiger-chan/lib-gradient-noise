@@ -12,7 +12,7 @@ namespace tc
 	template <typename Data>
 	class scope_ptr;
 
-	template<typename Key, typename Base>
+	template<typename Key, typename Base, typename Factory>
 	class factory_base;
 
 	template<typename Type>

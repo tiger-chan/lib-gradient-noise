@@ -8,7 +8,7 @@
 
 namespace tc
 {
-	template<typename Key, typename Base>
+	template<typename Key, typename Base, typename Factory>
 	class UPROAR_API factory_base
 	{
 		using spawn_t = scope_ptr<Base>(*)();
@@ -30,6 +30,7 @@ namespace tc
 			}
 
 			auto x = registered_types.emplace(key, []() { return make_type<Type>(); });
+			static_cast<Factory*>(this)->record_impl<Type>(key);
 			return x.second;
 		}
 
@@ -38,17 +39,6 @@ namespace tc
 			if (s != std::end(registered_types)) {
 				auto spawner = s->second;
 				return spawner();
-			}
-
-			return {nullptr};
-		}
-
-		template<typename Type>
-		scope_ptr<Type> spawn(const Key& key) const {
-			auto s = registered_types.find(key);
-			if (s != std::end(registered_types)) {
-				auto spawner = s->second;
-				return scope_ptr<Type>(spawner());
 			}
 
 			return {nullptr};

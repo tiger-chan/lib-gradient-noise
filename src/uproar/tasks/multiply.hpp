@@ -16,6 +16,7 @@ namespace tc
 			using Super = accumulator<multiply>;
 			friend class Super;
 			friend class mutation<multiply>;
+
 		public:
 			using Super::Super;
 
@@ -33,7 +34,16 @@ namespace tc
 				return result;
 			}
 		};
-	}
-}
+
+		template <>
+		struct config<multiply>
+		{
+			void operator()(multiply &task, const json::object &obj, configure_callback &callback) const
+			{
+				config<accumulator<multiply>>{}(task, obj, callback);
+			}
+		};
+	} // namespace task
+} // namespace tc
 
 #endif // UPROAR_TASKS_MULTIPLY_HPP

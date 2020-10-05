@@ -33,11 +33,12 @@ namespace tc
 			static constexpr decimal_t map_range_max{UPROAR_MAP_RANGE_MAX_DEFAULT};
 			static constexpr decimal_t map_range_low{UPROAR_MAP_RANGE_LOW_DEFAULT};
 			static constexpr decimal_t map_range_high{UPROAR_MAP_RANGE_HIGH_DEFAULT};
-		}
+		} // namespace defaults
 
 		class UPROAR_API map_range : public mutation<map_range>
 		{
 			friend class mutation<map_range>;
+
 		public:
 			map_range() UPROAR_NOEXCEPT = default;
 			map_range(task_source src) UPROAR_NOEXCEPT : source_{std::move(src)}
@@ -45,74 +46,47 @@ namespace tc
 			}
 
 			map_range(task_source src,
-					   decimal_t min,
-					   decimal_t max = defaults::map_range_max,
-					   decimal_t low = defaults::map_range_low,
-					   decimal_t high = defaults::map_range_high) UPROAR_NOEXCEPT :
-					   source_{std::move(src)},
-					   min_{min},
-					   max_{max},
-					   low_{low},
-					   high_{high}
+					  decimal_t min,
+					  decimal_t max = defaults::map_range_max,
+					  decimal_t low = defaults::map_range_low,
+					  decimal_t high = defaults::map_range_high) UPROAR_NOEXCEPT : source_{std::move(src)},
+																				   min_{min},
+																				   max_{max},
+																				   low_{low},
+																				   high_{high}
 			{
 			}
 
-			void configure(const json::object& obj, configure_callback& callback) final
+			void set_source(task_source src)
 			{
-				static const std::string source_key{"source"};
-				static const std::string min_key{"min"};
-				static const std::string max_key{"max"};
-				static const std::string low_key{"low"};
-				static const std::string high_key{"high"};
-
-				auto end = std::end(obj);
-				auto src_it = obj.find(source_key);
-				if (src_it != end) {
-					auto src = callback.eval(src_it->second);
-					source_ = *src;
-				}
-
-				auto min_it = obj.find(min_key);
-				if (min_it != end) {
-					min_ = min_it->second.as<decimal_t>();
-				}
-
-				auto max_it = obj.find(max_key);
-				if (max_it != end) {
-					max_ = max_it->second.as<decimal_t>();
-				}
-
-				auto low_it = obj.find(low_key);
-				if (low_it != end) {
-					low_ = low_it->second.as<decimal_t>();
-				}
-
-				auto high_it = obj.find(high_key);
-				if (high_it != end) {
-					high_ = high_it->second.as<decimal_t>();
-				}
+				source_ = src;
 			}
 
-			void set_min(decimal_t min) {
+			void set_min(decimal_t min)
+			{
 				min_ = min;
 			}
 
-			void set_max(decimal_t max) {
+			void set_max(decimal_t max)
+			{
 				max_ = max;
 			}
 
-			void set_low(decimal_t low) {
+			void set_low(decimal_t low)
+			{
 				low_ = low;
 			}
 
-			void set_high(decimal_t high) {
+			void set_high(decimal_t high)
+			{
 				high_ = high;
 			}
 
-			void source(task_source source) {
+			void source(task_source source)
+			{
 				source_ = std::move(source);
 			}
-			
+
 		private:
 			task_source source_{decimal_t{0}};
 			decimal_t min_{defaults::map_range_min};
@@ -129,6 +103,51 @@ namespace tc
 				auto s = (v - min_) / orig_range;
 				auto b = low_;
 				return s * new_range + b;
+			}
+		};
+
+		template <>
+		struct config<map_range>
+		{
+			void operator()(map_range &task, const json::object &obj, configure_callback &callback) const
+			{
+				static const std::string source_key{"source"};
+				static const std::string min_key{"min"};
+				static const std::string max_key{"max"};
+				static const std::string low_key{"low"};
+				static const std::string high_key{"high"};
+
+				auto end = std::end(obj);
+				auto src_it = obj.find(source_key);
+				if (src_it != end)
+				{
+					auto src = callback.eval(src_it->second);
+					task.set_source(*src);
+				}
+
+				src_it = obj.find(min_key);
+				if (src_it != end)
+				{
+					task.set_min(src_it->second.as<decimal_t>());
+				}
+
+				src_it = obj.find(max_key);
+				if (src_it != end)
+				{
+					task.set_max(src_it->second.as<decimal_t>());
+				}
+
+				src_it = obj.find(low_key);
+				if (src_it != end)
+				{
+					task.set_low(src_it->second.as<decimal_t>());
+				}
+
+				src_it = obj.find(high_key);
+				if (src_it != end)
+				{
+					task.set_high(src_it->second.as<decimal_t>());
+				}
 			}
 		};
 	} // namespace task

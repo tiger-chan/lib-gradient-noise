@@ -4,6 +4,7 @@
 #include "../config/config.hpp"
 #include "../core/noise_config.hpp"
 #include "fwd.hpp"
+#include "config.hpp"
 #include "generation.hpp"
 
 #ifndef UPROAR_PERLIN_OCTIVE_COUNT_DEFAULT
@@ -43,6 +44,7 @@ namespace tc
 		class UPROAR_API perlin : public generation<perlin<Noise>>
 		{
 			friend class generation<perlin<Noise>>;
+
 		public:
 			using octave_t = UPROAR_OCTAVE_TYPE;
 			using decimal_t = UPROAR_DECIMAL_TYPE;
@@ -70,36 +72,23 @@ namespace tc
 				decimal_t persistance = defaults::perlin_persistance,
 				decimal_t frequency = defaults::perlin_frequency,
 				decimal_t amplitude = defaults::perlin_amplitude) UPROAR_NOEXCEPT
-				: perlin(octaves, lacunarity, persistance, frequency, amplitude), noise{seed}
+				: perlin(octaves, lacunarity, persistance, frequency, amplitude),
+				  noise{seed}
 			{
 			}
 
-			void configure(const json::object& obj, configure_callback& callback) final
-			{
-				static const std::string seed_key{"seed"};
-
-				auto src_it = obj.find(seed_key);
-				if (src_it != std::end(obj))
-				{
-					set_seed(src_it->second.as<uint32_t>());
-				}
-
-				auto config = config_;
-				config.configure(obj);
-				set_config(config);
-			}
-
-			const noise_config& config() const
+			const noise_config &config() const
 			{
 				return config_;
 			}
 
-			void set_config(const noise_config& config)
+			void set_config(const noise_config &config)
 			{
 				config_ = config;
 			}
 
-			void set_seed(uint32_t seed) UPROAR_NOEXCEPT {
+			void set_seed(uint32_t seed) UPROAR_NOEXCEPT
+			{
 				noise_ = Noise{seed};
 			}
 
@@ -134,10 +123,28 @@ namespace tc
 				defaults::perlin_lacunarity,
 				defaults::perlin_persistance,
 				defaults::perlin_frequency,
-				defaults::perlin_amplitude
-			};
+				defaults::perlin_amplitude};
 
 			Noise noise_{};
+		};
+
+		template <typename Noise>
+		struct config<perlin<Noise>>
+		{
+			void operator()(perlin<Noise> &task, const json::object &obj, configure_callback &callback) const
+			{
+				static const std::string seed_key{"seed"};
+
+				auto src_it = obj.find(seed_key);
+				if (src_it != std::end(obj))
+				{
+					task.set_seed(src_it->second.as<uint32_t>());
+				}
+
+				auto config = task.config();
+				config.configure(obj);
+				task.set_config(config);
+			}
 		};
 	} // namespace task
 } // namespace tc

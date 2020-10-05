@@ -23,11 +23,12 @@ namespace tc
 		{
 			static constexpr UPROAR_DECIMAL_TYPE scale_bias_scale{UPROAR_SCALE_BIAS_SCALE_DEFAULT};
 			static constexpr UPROAR_DECIMAL_TYPE scale_bias_bias{UPROAR_SCALE_BIAS_BIAS_DEFAULT};
-		}
+		} // namespace defaults
 
 		class UPROAR_API scale_bias : public mutation<scale_bias>
 		{
 			friend class mutation<scale_bias>;
+
 		public:
 			scale_bias() UPROAR_NOEXCEPT = default;
 			scale_bias(task_source src) UPROAR_NOEXCEPT : source_{std::move(src)}
@@ -37,48 +38,26 @@ namespace tc
 			scale_bias(task_source src,
 					   task_source scale,
 					   task_source bias = task_source{defaults::scale_bias_bias}) UPROAR_NOEXCEPT : source_{std::move(src)},
-																				  scale_{std::move(scale)}, bias_{std::move(bias)}
+																									scale_{std::move(scale)},
+																									bias_{std::move(bias)}
 			{
 			}
 
-			void configure(const json::object& obj, configure_callback& callback) final
+			void set_scale(task_source scale)
 			{
-				static const std::string source_key{"source"};
-				static const std::string scale_key{"scale"};
-				static const std::string bias_key{"bias"};
-
-				auto end = std::end(obj);
-				auto src_it = obj.find(source_key);
-				if (src_it != end) {
-					auto src = callback.eval(src_it->second);
-					source_ = *src;
-				}
-
-				auto scale_it = obj.find(scale_key);
-				if (scale_it != end) {
-					auto src = callback.eval(scale_it->second);
-					scale_ = *src;
-				}
-
-				auto bias_it = obj.find(bias_key);
-				if (bias_it != end) {
-					auto src = callback.eval(bias_it->second);
-					bias_ = *src;
-				}
-			}
-
-			void scale(task_source scale) {
 				scale_ = std::move(scale);
 			}
 
-			void bias(task_source bias) {
+			void set_bias(task_source bias)
+			{
 				bias_ = std::move(bias);
 			}
 
-			void source(task_source source) {
+			void set_source(task_source source)
+			{
 				source_ = std::move(source);
 			}
-			
+
 		private:
 			task_source source_{decimal_t{0}};
 			task_source scale_{defaults::scale_bias_scale};
@@ -91,6 +70,39 @@ namespace tc
 				auto s = scale_.eval(std::forward<Args>(args)...);
 				auto b = bias_.eval(std::forward<Args>(args)...);
 				return v * s + b;
+			}
+		};
+
+		template <>
+		struct config<scale_bias>
+		{
+			void operator()(scale_bias &task, const json::object &obj, configure_callback &callback) const
+			{
+				static const std::string source_key{"source"};
+				static const std::string scale_key{"scale"};
+				static const std::string bias_key{"bias"};
+
+				auto end = std::end(obj);
+				auto src_it = obj.find(source_key);
+				if (src_it != end)
+				{
+					auto src = callback.eval(src_it->second);
+					task.set_source(*src);
+				}
+
+				src_it = obj.find(scale_key);
+				if (src_it != end)
+				{
+					auto src = callback.eval(src_it->second);
+					task.set_scale(*src);
+				}
+
+				src_it = obj.find(bias_key);
+				if (src_it != end)
+				{
+					auto src = callback.eval(src_it->second);
+					task.set_bias(*src);
+				}
 			}
 		};
 	} // namespace task

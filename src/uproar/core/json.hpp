@@ -4,7 +4,6 @@
 #include "../config/config.hpp"
 #include "attributes.hpp"
 #include "scoped_ptr.hpp"
-#include <memory>
 #include <unordered_map>
 #include <string>
 #include <variant>

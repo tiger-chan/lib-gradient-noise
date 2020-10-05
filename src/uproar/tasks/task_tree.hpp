@@ -75,14 +75,6 @@ namespace tc
 				auto type_val = object.at(type_key);
 
 				const auto& type = type_val.as<std::string>();
-				auto t = task_factory::instance().spawn(type);
-
-				if (!t.is_valid()) {
-					// I'm not sure what type of logging I would want, at this point.
-					return;
-				}
-				
-				auto& map = tasks;
 
 				struct callback_t : public configure_callback
 				{
@@ -106,8 +98,17 @@ namespace tc
 				};
 
 				callback_t callback{};
+				auto& map = tasks;
 				callback.map = &tasks;
-				t->configure(object, callback);
+
+				auto t = task_factory::instance().spawn(type, object, callback);
+
+				if (!t.is_valid()) {
+					// I'm not sure what type of logging I would want, at this point.
+					return;
+				}
+				
+				//t->configure(object, callback);
 
 				const auto& name = object.at(name_key).as<std::string>();
 
