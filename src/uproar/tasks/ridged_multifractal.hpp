@@ -50,42 +50,18 @@ namespace tc
 			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_offset{RIDGED_MULTIFRACTAL_OFFSET_DEFAULT};
 		} // namespace defaults
 
+		struct UPROAR_API ridged_multi_config : public noise_config
+		{
+			decimal_t exponent{defaults::ridged_multifractal_exponent};
+			decimal_t offset{defaults::ridged_multifractal_offset};
+		};
+
 		template <typename Noise>
 		class UPROAR_API ridged_multifractal : public generation<ridged_multifractal<Noise>>
 		{
 			friend class generation<ridged_multifractal<Noise>>;
 
 		public:
-			using octave_t = UPROAR_OCTAVE_TYPE;
-			using decimal_t = UPROAR_DECIMAL_TYPE;
-
-			struct UPROAR_API ridged_multi_config : public noise_config
-			{
-				decimal_t exponent{defaults::ridged_multifractal_exponent};
-				decimal_t offset{defaults::ridged_multifractal_offset};
-
-				void ex_configure(const json::object &obj)
-				{
-					static const std::string exponent_key{"exponent"};
-					static const std::string offset_key{"exponent"};
-
-					auto end = std::end(obj);
-					auto exp = obj.find(exponent_key);
-					if (exp != end)
-					{
-						exponent = exp->second.as<decimal_t>();
-					}
-
-					auto off = obj.find(offset_key);
-					if (off != end)
-					{
-						offset = off->second.as<decimal_t>();
-					}
-
-					configure(obj);
-				}
-			};
-
 			struct correction
 			{
 				decimal_t scale{0};

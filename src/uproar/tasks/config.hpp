@@ -3,7 +3,9 @@
 
 #include "../config/config.hpp"
 #include "../core/attributes.hpp"
+#include "../memory.hpp"
 #include "base_task.hpp"
+#include <unordered_map>
 
 namespace tc
 {
