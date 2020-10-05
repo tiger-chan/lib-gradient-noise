@@ -105,51 +105,6 @@ namespace tc
 				return s * new_range + b;
 			}
 		};
-
-		template <>
-		struct config<map_range>
-		{
-			void operator()(map_range &task, const json::object &obj, configure_callback &callback) const
-			{
-				static const std::string source_key{"source"};
-				static const std::string min_key{"min"};
-				static const std::string max_key{"max"};
-				static const std::string low_key{"low"};
-				static const std::string high_key{"high"};
-
-				auto end = std::end(obj);
-				auto src_it = obj.find(source_key);
-				if (src_it != end)
-				{
-					auto src = callback.eval(src_it->second);
-					task.set_source(*src);
-				}
-
-				src_it = obj.find(min_key);
-				if (src_it != end)
-				{
-					task.set_min(src_it->second.as<decimal_t>());
-				}
-
-				src_it = obj.find(max_key);
-				if (src_it != end)
-				{
-					task.set_max(src_it->second.as<decimal_t>());
-				}
-
-				src_it = obj.find(low_key);
-				if (src_it != end)
-				{
-					task.set_low(src_it->second.as<decimal_t>());
-				}
-
-				src_it = obj.find(high_key);
-				if (src_it != end)
-				{
-					task.set_high(src_it->second.as<decimal_t>());
-				}
-			}
-		};
 	} // namespace task
 } // namespace tc
 

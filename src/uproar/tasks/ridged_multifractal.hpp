@@ -197,25 +197,6 @@ namespace tc
 			std::array<decimal_t, defaults::ridged_multifractal_max_octaves> weights_{};
 			std::array<correction, defaults::ridged_multifractal_max_octaves> corrections_{};
 		};
-
-		template <typename Noise>
-		struct config<ridged_multifractal<Noise>>
-		{
-			void operator()(ridged_multifractal<Noise> &task, const json::object &obj, configure_callback &callback) const
-			{
-				static const std::string seed_key{"seed"};
-
-				auto src_it = obj.find(seed_key);
-				if (src_it != std::end(obj))
-				{
-					task.set_seed(src_it->second.as<uint32_t>());
-				}
-
-				auto config = task.config();
-				config.ex_configure(obj);
-				task.set_config(config);
-			}
-		};
 	} // namespace task
 } // namespace tc
 

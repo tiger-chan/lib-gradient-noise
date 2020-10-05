@@ -69,31 +69,6 @@ namespace tc
 				return ease_in_out(v, p);
 			}
 		};
-
-		template <>
-		struct config<bias_task>
-		{
-			void operator()(bias_task &task, const json::object &obj, configure_callback &callback) const
-			{
-				static const std::string source_key{"source"};
-				static const std::string bias_key{"bias"};
-
-				auto end = std::end(obj);
-				auto src_it = obj.find(source_key);
-				if (src_it != end)
-				{
-					auto src = callback.eval(src_it->second);
-					task.source(*src);
-				}
-
-				auto bias_it = obj.find(bias_key);
-				if (bias_it != end)
-				{
-					auto src = callback.eval(bias_it->second);
-					task.bias(*src);
-				}
-			}
-		};
 	} // namespace task
 } // namespace tc
 

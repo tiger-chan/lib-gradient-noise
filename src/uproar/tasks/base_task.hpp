@@ -3,20 +3,12 @@
 
 #include "../core/attributes.hpp"
 #include "../config/config.hpp"
-#include "../core/json.hpp"
 #include "fwd.hpp"
 
 namespace tc
 {
 	namespace task
 	{	
-		class UPROAR_API configure_callback
-		{
-			public:
-			 virtual scope_ptr<task_source> eval(const json::value& val) const = 0;
-		};
-
-
 		class UPROAR_API base_task
 		{
 		public:

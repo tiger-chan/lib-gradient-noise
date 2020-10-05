@@ -54,34 +54,6 @@ namespace tc
 			task_source source_;
 			std::array<task_source, defaults::translate_max_sources> translations_{};
 		};
-
-		template <>
-		struct config<translate_domain>
-		{
-			void operator()(translate_domain &task, const json::object &obj, configure_callback &callback) const
-			{
-				static const std::string source_key{"source"};
-
-				auto end = std::end(obj);
-				auto src_it = obj.find(source_key);
-				if (src_it != end)
-				{
-					auto src = callback.eval(src_it->second);
-					task.set_source(*src);
-				}
-
-				for (auto i = 0; i < defaults::translate_max_sources; ++i)
-				{
-					auto v = static_cast<math::variable>(i);
-					auto variable_it = obj.find(math::to_c_str(v));
-					if (variable_it != end)
-					{
-						auto src = callback.eval(variable_it->second);
-						task.set_translation(v, *src);
-					}
-				}
-			}
-		};
 	} // namespace task
 } // namespace tc
 

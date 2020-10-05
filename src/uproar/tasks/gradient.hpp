@@ -78,42 +78,6 @@ namespace tc
 			std::array<decimal_t, defaults::gradient_max_dimensions> ac_{};
 			decimal_t ac_size{1};
 		};
-
-		template <>
-		struct config<gradient>
-		{
-			void operator()(gradient &task, const json::object &obj, configure_callback &callback) const
-			{
-				std::array<decimal_t, defaults::gradient_max_dimensions> l{};
-				std::array<decimal_t, defaults::gradient_max_dimensions> r{};
-				l.fill(0.0);
-				r.fill(0.0);
-
-				auto end = std::end(obj);
-				for (auto i = 0; i < defaults::gradient_max_dimensions; ++i)
-				{
-					std::string var{math::to_c_str(static_cast<math::variable>(i))};
-					auto var1 = var + "1";
-					auto var2 = var + "2";
-
-					auto variable_it = obj.find(var1);
-					if (variable_it != end)
-					{
-						auto src = variable_it->second.as<decimal_t>();
-						l[i] = src;
-					}
-
-					variable_it = obj.find(var2);
-					if (variable_it != end)
-					{
-						auto src = variable_it->second.as<decimal_t>();
-						r[i] = src;
-					}
-				}
-
-				task.set(l, r);
-			}
-		};
 	} // namespace task
 } // namespace tc
 

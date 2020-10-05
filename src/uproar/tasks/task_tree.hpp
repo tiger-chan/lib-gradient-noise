@@ -5,7 +5,7 @@
 #include "../config/config.hpp"
 #include "../core/attributes.hpp"
 #include "../core/scoped_ptr.hpp"
-#include "../core/json.hpp"
+#include "config.hpp"
 #include "task_factory.hpp"
 #include "base_task.hpp"
 
@@ -30,14 +30,16 @@ namespace tc
 {
 	namespace task
 	{
+		template<typename TreeObject, typename TreeObjectValue>
 		class UPROAR_API task_tree : public base_task
 		{
+			using map_t = std::unordered_map<std::string, scope_ptr<base_task>>;
 			public:
 			task_tree()
 			{
 				static bool registered = false;
 				if (!registered) {
-					auto& instance = task_factory::instance();
+					auto& instance = task_factory_v<TreeObject, TreeObjectValue>;
 					instance.record<billowing<perlin_quintic>>(std::string("billowing"));
 					instance.record<perlin<perlin_quintic>>(std::string("perlin"));
 					instance.record<ridged_multifractal<perlin_quintic>>(std::string("ridged_multi"));
@@ -66,7 +68,7 @@ namespace tc
 				}
 			}
 
-			void read(const json::object& object)
+			void read(const TreeObject& object)
 			{
 				static const std::string name_key{"name"};
 				static const std::string type_key{"type"};
@@ -76,40 +78,17 @@ namespace tc
 
 				const auto& type = type_val.as<std::string>();
 
-				struct callback_t : public configure_callback
-				{
-					scope_ptr<task_source> eval(const json::value& val) const final
-					{
-						if (val.holds_alternative<decimal_t>()) {
-							return make_scoped<task_source>(val.as<decimal_t>());
-						}
+				config_callback<TreeObjectValue> callback{};
+				callback.tasks = &tasks;
 
-						auto n = val.as<std::string>();
-						auto task = map->find(n);
-
-						if (task != std::end(*map)) {
-							return make_scoped<task_source>(task->second.get());
-						}
-						
-						return make_scoped<task_source>(0.0);
-					}
-
-					std::unordered_map<std::string, scope_ptr<base_task>>* map{nullptr};
-				};
-
-				callback_t callback{};
-				auto& map = tasks;
-				callback.map = &tasks;
-
-				auto t = task_factory::instance().spawn(type, object, callback);
+				auto& instance = task_factory_v<TreeObject, TreeObjectValue>;
+				auto t = instance.spawn(type, object, callback);
 
 				if (!t.is_valid()) {
 					// I'm not sure what type of logging I would want, at this point.
 					return;
 				}
 				
-				//t->configure(object, callback);
-
 				const auto& name = object.at(name_key).as<std::string>();
 
 				auto rendered_name = name;
@@ -145,8 +124,8 @@ namespace tc
 			}
 
 			private:
-			std::unordered_map<std::string, scope_ptr<base_task>> tasks;
-			std::unordered_map<std::string, scope_ptr<base_task>>::iterator rendered_task;
+			map_t tasks;
+			map_t::iterator rendered_task;
 		};
 	};
 }

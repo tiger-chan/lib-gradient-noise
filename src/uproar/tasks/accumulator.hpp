@@ -45,27 +45,6 @@ namespace tc
 			std::vector<task_source> sources_{};
 			const size_t max_sources_{defaults::accumulator_max_count};
 		};
-
-		template <typename Type>
-		struct config<accumulator<Type>>
-		{
-			void operator()(accumulator<Type> &task, const json::object &obj, configure_callback &callback) const
-			{
-				static const std::string source_key{"source_"};
-
-				auto end = std::end(obj);
-				for (size_t i = 0; i < task.size(); ++i)
-				{
-					std::string key = source_key + std::to_string(i);
-					auto src_it = obj.find(key);
-					if (src_it != end)
-					{
-						auto src = callback.eval(src_it->second);
-						task.set_source(i, *src);
-					}
-				}
-			}
-		};
 	} // namespace task
 } // namespace tc
 

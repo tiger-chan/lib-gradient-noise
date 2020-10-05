@@ -34,15 +34,6 @@ namespace tc
 				return result;
 			}
 		};
-
-		template <>
-		struct config<multiply>
-		{
-			void operator()(multiply &task, const json::object &obj, configure_callback &callback) const
-			{
-				config<accumulator<multiply>>{}(task, obj, callback);
-			}
-		};
 	} // namespace task
 } // namespace tc
 

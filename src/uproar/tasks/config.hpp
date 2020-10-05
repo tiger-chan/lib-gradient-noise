@@ -9,10 +9,19 @@ namespace tc
 {
 	namespace task
 	{
-		template<typename Type>
+		template<typename ConfigValue>
+		struct config_callback
+		{
+			task_source operator()(const ConfigValue& value) const;
+
+			std::unordered_map<std::string, scope_ptr<base_task>>* tasks;
+		};
+
+		template<typename ConfigSource, typename Type>
 		struct config
 		{
-			void operator()(Type& task, const json::object& obj, configure_callback& callback) const;
+			template<typename Callback>
+			void operator()(Type& task, const ConfigSource& obj, Callback& cb) const;
 		};
 	}
 }

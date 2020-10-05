@@ -127,25 +127,6 @@ namespace tc
 
 			Noise noise_{};
 		};
-
-		template <typename Noise>
-		struct config<perlin<Noise>>
-		{
-			void operator()(perlin<Noise> &task, const json::object &obj, configure_callback &callback) const
-			{
-				static const std::string seed_key{"seed"};
-
-				auto src_it = obj.find(seed_key);
-				if (src_it != std::end(obj))
-				{
-					task.set_seed(src_it->second.as<uint32_t>());
-				}
-
-				auto config = task.config();
-				config.configure(obj);
-				task.set_config(config);
-			}
-		};
 	} // namespace task
 } // namespace tc
 

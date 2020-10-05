@@ -72,39 +72,6 @@ namespace tc
 				return v * s + b;
 			}
 		};
-
-		template <>
-		struct config<scale_bias>
-		{
-			void operator()(scale_bias &task, const json::object &obj, configure_callback &callback) const
-			{
-				static const std::string source_key{"source"};
-				static const std::string scale_key{"scale"};
-				static const std::string bias_key{"bias"};
-
-				auto end = std::end(obj);
-				auto src_it = obj.find(source_key);
-				if (src_it != end)
-				{
-					auto src = callback.eval(src_it->second);
-					task.set_source(*src);
-				}
-
-				src_it = obj.find(scale_key);
-				if (src_it != end)
-				{
-					auto src = callback.eval(src_it->second);
-					task.set_scale(*src);
-				}
-
-				src_it = obj.find(bias_key);
-				if (src_it != end)
-				{
-					auto src = callback.eval(src_it->second);
-					task.set_bias(*src);
-				}
-			}
-		};
 	} // namespace task
 } // namespace tc
 

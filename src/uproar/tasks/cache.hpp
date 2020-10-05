@@ -80,23 +80,6 @@ namespace tc
 			task_source source_{};
 			mutable std::array<item, defaults::cache_max_dimension> stack_{};
 		};
-
-		template <>
-		struct config<cache>
-		{
-			void operator()(cache &task, const json::object &obj, configure_callback &callback) const
-			{
-				static const std::string source_key{"source"};
-
-				auto end = std::end(obj);
-				auto src_it = obj.find(source_key);
-				if (src_it != end)
-				{
-					auto src = callback.eval(src_it->second);
-					task.set_source(*src);
-				}
-			}
-		};
 	} // namespace task
 } // namespace tc
 

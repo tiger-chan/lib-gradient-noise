@@ -147,55 +147,6 @@ namespace tc
 			Blender blender{};
 		};
 
-		template <typename Blender>
-		struct config<selector<Blender>>
-		{
-			void operator()(selector<Blender> &task, const json::object &obj, configure_callback &callback) const
-			{
-				static const std::string switch_key{"switch"};
-				static const std::string low_key{"low"};
-				static const std::string high_key{"high"};
-				static const std::string threshold_key{"threshold"};
-				static const std::string falloff_key{"falloff"};
-
-				auto end = std::end(obj);
-				auto src_it = obj.find(switch_key);
-				if (src_it != end)
-				{
-					auto src = callback.eval(src_it->second);
-					task.set_switch(*src);
-				}
-
-				src_it = obj.find(low_key);
-				if (src_it != end)
-				{
-					auto src = callback.eval(src_it->second);
-					task.set_low(*src);
-				}
-
-				src_it = obj.find(high_key);
-				if (src_it != end)
-				{
-					auto src = callback.eval(src_it->second);
-					task.set_high(*src);
-				}
-
-				src_it = obj.find(threshold_key);
-				if (src_it != end)
-				{
-					auto src = callback.eval(src_it->second);
-					task.set_threshold(*src);
-				}
-
-				src_it = obj.find(falloff_key);
-				if (src_it != end)
-				{
-					auto src = callback.eval(src_it->second);
-					task.set_falloff(*src);
-				}
-			}
-		};
-
 		using selector_cubic = selector<cubic_blend>;
 		using selector_quintic = selector<quintic_blend>;
 	} // namespace task
