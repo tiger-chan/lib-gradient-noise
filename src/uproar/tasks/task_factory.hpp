@@ -27,20 +27,16 @@ namespace tc
 			public:
 
 			template<typename Callback>
-			scope_ptr<base_task> spawn(const std::string& key, const TaskObjectDef& config, Callback& cb) const
+			void finish_spawn(const std::string& key, scope_ptr<base_task>& task, const TaskObjectDef& config, Callback& cb) const
 			{
-				auto task = Super::spawn(key);
-
 				if (!task.is_valid()) {
-					return { nullptr };
+					return;
 				}
 
 				auto s = configurations.find(key);
 				if (s != std::end(configurations)) {
 					s->second(task, config, cb);
 				}
-
-				return std::move(task);
 			}
 
 			private:

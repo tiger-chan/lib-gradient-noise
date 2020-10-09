@@ -6,11 +6,19 @@
 #include "../memory.hpp"
 #include "base_task.hpp"
 #include <unordered_map>
+#include <string>
 
 namespace tc
 {
 	namespace task
 	{
+		struct config_details
+		{
+			std::string name{};
+			std::string type{};
+			bool rendered{false};
+		};
+
 		template<typename ConfigValue>
 		struct config_callback
 		{

@@ -2,6 +2,7 @@
 #define UPROAR_TASKS_HPP
 
 // Generation
+#include "tasks/constant.hpp"
 #include "tasks/perlin.hpp"
 #include "tasks/billowing.hpp"
 #include "tasks/ridged_multifractal.hpp"
@@ -15,6 +16,7 @@
 #include "tasks/scale_domain.hpp"
 #include "tasks/scale_bias.hpp"
 
+#include "tasks/additive.hpp"
 #include "tasks/multiply.hpp"
 
 #include "tasks/task_factory.hpp"

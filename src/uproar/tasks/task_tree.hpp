@@ -10,6 +10,7 @@
 #include "base_task.hpp"
 
 #include "../core/perlin-noise.hpp"
+#include "constant.hpp"
 #include "billowing.hpp"
 #include "perlin.hpp"
 #include "ridged_multifractal.hpp"
@@ -35,11 +36,13 @@ namespace tc
 		{
 			using map_t = std::unordered_map<std::string, scope_ptr<base_task>>;
 			public:
+
 			task_tree()
 			{
 				static bool registered = false;
 				if (!registered) {
 					auto& instance = task_factory_v<TreeObject, TreeObjectValue>;
+					instance.record<constant>(std::string("constant"));
 					instance.record<billowing<perlin_quintic>>(std::string("billowing"));
 					instance.record<perlin<perlin_quintic>>(std::string("perlin"));
 					instance.record<ridged_multifractal<perlin_quintic>>(std::string("ridged_multi"));
@@ -51,6 +54,7 @@ namespace tc
 					instance.record<bias_task>("bias");
 					instance.record<selector_quintic>("selector");
 					instance.record<cache>("cache");
+					instance.record<additive>("additive");
 					instance.record<multiply>("multiply");
 
 					registered = true;
@@ -62,50 +66,21 @@ namespace tc
 			template<typename Iter>
 			void read(Iter begin, Iter end)
 			{
-				for (; begin != end; ++begin)
+				for (auto it = begin; it != end; ++it)
 				{
-					read(*begin);
+					spawn(*it);
+				}
+
+				for (auto it = begin; it != end; ++it)
+				{
+					configure(*it);
 				}
 			}
 
 			void read(const TreeObject& object)
 			{
-				static const std::string name_key{"name"};
-				static const std::string type_key{"type"};
-				static const std::string rendered_key{"rendered"};
-
-				auto type_val = object.at(type_key);
-
-				const auto& type = type_val.as<std::string>();
-
-				config_callback<TreeObjectValue> callback{};
-				callback.tasks = &tasks;
-
-				auto& instance = task_factory_v<TreeObject, TreeObjectValue>;
-				auto t = instance.spawn(type, object, callback);
-
-				if (!t.is_valid()) {
-					// I'm not sure what type of logging I would want, at this point.
-					return;
-				}
-				
-				const auto& name = object.at(name_key).as<std::string>();
-
-				auto rendered_name = name;
-				if (rendered_task != std::end(tasks)) {
-					rendered_name = rendered_task->first;
-				}
-
-				auto task = tasks.emplace(name, std::move(t));
-
-				auto rendered_it = object.find(rendered_key);
-				if (rendered_it != std::end(object)) {
-					rendered_task = task.first;
-				}
-				else
-				{
-					rendered_task = tasks.find(rendered_name);
-				}
+				spawn(object);
+				configure(object);
 			}
 
 			decimal_t eval(decimal_t x) const final
@@ -124,6 +99,62 @@ namespace tc
 			}
 
 			private:
+			void spawn(const TreeObject& object)
+			{
+				config_callback<TreeObjectValue> cb{};
+				cb.tasks = &tasks;
+
+				config_details details{};
+				config<TreeObject, config_details>{}(details, object, cb);
+
+				const auto& type =  details.type;
+
+				auto& instance = task_factory_v<TreeObject, TreeObjectValue>;
+				auto t = instance.spawn(type);
+
+				if (!t.is_valid()) {
+					// I'm not sure what type of logging I would want, at this point.
+					return;
+				}
+
+				const auto& name = details.name;
+
+				auto rendered_name = name;
+				if (rendered_task != std::end(tasks)) {
+					rendered_name = rendered_task->first;
+				}
+
+				auto task = tasks.emplace(name, std::move(t));
+
+				if (details.rendered) {
+					rendered_task = task.first;
+				}
+				else
+				{
+					rendered_task = tasks.find(rendered_name);
+				}				
+			}
+
+			void configure(const TreeObject& object)
+			{
+				config_callback<TreeObjectValue> cb{};
+				cb.tasks = &tasks;
+
+				config_details details{};
+				config<TreeObject, config_details>{}(details, object, cb);
+
+				const auto& type =  details.type;
+				const auto& name =  details.name;
+
+				auto task = tasks.find(name);
+				if (task == std::end(tasks)) {
+					return;
+				}
+
+				auto& instance = task_factory_v<TreeObject, TreeObjectValue>;
+				instance.finish_spawn(type, task->second, object, cb);
+			}
+
 			map_t tasks;
 			map_t::iterator rendered_task;
 		};
