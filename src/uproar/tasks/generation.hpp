@@ -32,6 +32,23 @@ namespace tc
 				return static_cast<const Task*>(this)->eval_impl(x, y, z);
 			}
 		};
+
+		class UPROAR_API fractal_task
+		{
+			public:
+			virtual void set_seed(uint32_t seed) UPROAR_NOEXCEPT 
+			{
+				seed_ = seed;
+			}
+
+			uint32_t seed() const {
+				return seed_;
+			}
+
+			protected:
+			uint32_t seed_{0};
+		};
+
 	} // namespace task
 } // namespace tc
 

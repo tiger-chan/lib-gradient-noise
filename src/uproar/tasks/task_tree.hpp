@@ -5,7 +5,7 @@
 #include "../config/config.hpp"
 #include "../core/attributes.hpp"
 #include "../core/scoped_ptr.hpp"
-#include "config.hpp"
+#include "parse.hpp"
 #include "task_factory.hpp"
 #include "base_task.hpp"
 
@@ -35,31 +35,55 @@ namespace tc
 		class UPROAR_API task_tree : public base_task
 		{
 			using map_t = std::unordered_map<std::string, scope_ptr<base_task>>;
+			using factory_t =  task_factory<TreeObject, TreeObjectValue>;
+			using parse_t = typename factory_t::parse_t;
+			using config_t = factory_callable<parse_t()>;
 			public:
 
 			task_tree()
 			{
+				static std::unordered_map<std::string, config_t> configurations;
 				static bool registered = false;
 				if (!registered) {
+					static const std::string constant_key{"constant"};
+					static const std::string billowing_key{"billowing"};
+					static const std::string perlin_key{"perlin"};
+					static const std::string ridged_multi_key{"ridged_multi"};
+					static const std::string gradient_key{"gradient"};
+					static const std::string map_range_key{"map_range"};
+					static const std::string scale_bias_key{"scale_bias"};
+					static const std::string scale_domain_key{"scale"};
+					static const std::string translate_domain_key{"translate"};
+					static const std::string bias_key{"bias"};
+					static const std::string selector_key{"selector"};
+					static const std::string cache_key{"cache"};
+					static const std::string additive_key{"additive"};
+					static const std::string multiply_key{"multiply"};
 					auto& instance = task_factory_v<TreeObject, TreeObjectValue>;
-					instance.record<constant>(std::string("constant"));
-					instance.record<billowing<perlin_quintic>>(std::string("billowing"));
-					instance.record<perlin<perlin_quintic>>(std::string("perlin"));
-					instance.record<ridged_multifractal<perlin_quintic>>(std::string("ridged_multi"));
-					instance.record<gradient>(std::string("gradient"));
-					instance.record<map_range>("map_range");
-					instance.record<scale_bias>("scale_bias");
-					instance.record<scale_domain>("scale");
-					instance.record<translate_domain>("translate");
-					instance.record<bias_task>("bias");
-					instance.record<selector_quintic>("selector");
-					instance.record<cache>("cache");
-					instance.record<additive>("additive");
-					instance.record<multiply>("multiply");
+
+					configurations[constant_key] = instance.record_task<constant>(constant_key);
+					configurations[billowing_key] =  instance.record_task<billowing<perlin_quintic>>(billowing_key);
+					configurations[perlin_key] = instance.record_task<perlin<perlin_quintic>>(perlin_key);
+					configurations[ridged_multi_key] = instance.record_task<ridged_multifractal<perlin_quintic>>(ridged_multi_key);
+					configurations[gradient_key] = instance.record_task<gradient>(gradient_key);
+					configurations[map_range_key] = instance.record_task<map_range>(map_range_key);
+					configurations[scale_bias_key] = instance.record_task<scale_bias>(scale_bias_key);
+					configurations[scale_domain_key] = instance.record_task<scale_domain>(scale_domain_key);
+					configurations[translate_domain_key] = instance.record_task<translate_domain>(translate_domain_key);
+					configurations[bias_key] = instance.record_task<bias_task>(bias_key);
+					configurations[selector_key] = instance.record_task<selector_quintic>(selector_key);
+					configurations[cache_key] = instance.record_task<cache>(cache_key);
+					configurations[additive_key] = instance.record_task<additive>(additive_key);
+					configurations[multiply_key] = instance.record_task<multiply>(multiply_key);
 
 					registered = true;
 				}
 
+				for (const auto& pair: configurations) {
+					parsers[pair.first] = pair.second();
+				}
+
+				callback.tasks = &tasks;
 				rendered_task = std::end(tasks);
 			}
 			
@@ -101,11 +125,8 @@ namespace tc
 			private:
 			void spawn(const TreeObject& object)
 			{
-				config_callback<TreeObjectValue> cb{};
-				cb.tasks = &tasks;
-
-				config_details details{};
-				config<TreeObject, config_details>{}(details, object, cb);
+				task_details details{};
+				parse<TreeObject, task_details>{}(details, object);
 
 				const auto& type =  details.type;
 
@@ -137,11 +158,8 @@ namespace tc
 
 			void configure(const TreeObject& object)
 			{
-				config_callback<TreeObjectValue> cb{};
-				cb.tasks = &tasks;
-
-				config_details details{};
-				config<TreeObject, config_details>{}(details, object, cb);
+				task_details details{};
+				parse<TreeObject, task_details>{}(details, object);
 
 				const auto& type =  details.type;
 				const auto& name =  details.name;
@@ -152,11 +170,13 @@ namespace tc
 				}
 
 				auto& instance = task_factory_v<TreeObject, TreeObjectValue>;
-				instance.finish_spawn(type, task->second, object, cb);
+				parsers[type](task->second, object, callback);
 			}
 
 			map_t tasks;
 			map_t::iterator rendered_task;
+			std::unordered_map<std::string, parse_t> parsers;
+			parse_callback<TreeObjectValue> callback{};
 		};
 	};
 }

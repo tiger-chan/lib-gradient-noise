@@ -57,7 +57,7 @@ namespace tc
 		};
 
 		template <typename Noise>
-		class UPROAR_API ridged_multifractal : public generation<ridged_multifractal<Noise>>
+		class UPROAR_API ridged_multifractal : public generation<ridged_multifractal<Noise>>, public fractal_task
 		{
 			friend class generation<ridged_multifractal<Noise>>;
 
@@ -112,8 +112,9 @@ namespace tc
 				config_ = config;
 			}
 
-			void set_seed(uint32_t seed) UPROAR_NOEXCEPT
+			void set_seed(uint32_t seed) UPROAR_NOEXCEPT final
 			{
+				fractal_task::set_seed(seed);
 				noise_ = Noise{seed};
 			}
 

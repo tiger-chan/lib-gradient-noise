@@ -12,7 +12,7 @@ namespace tc
 {
 	namespace task
 	{
-		struct config_details
+		struct task_details
 		{
 			std::string name{};
 			std::string type{};
@@ -20,7 +20,7 @@ namespace tc
 		};
 
 		template<typename ConfigValue>
-		struct config_callback
+		struct parse_callback
 		{
 			task_source operator()(const ConfigValue& value) const;
 
@@ -28,10 +28,12 @@ namespace tc
 		};
 
 		template<typename ConfigSource, typename Type>
-		struct config
+		struct parse
 		{
 			template<typename Callback>
-			void operator()(Type& task, const ConfigSource& obj, Callback& cb) const;
+			void operator()(Type& task, const ConfigSource& obj, Callback& cb) const {}
+
+			void operator()(Type& task, const ConfigSource& obj) const {}
 		};
 	}
 }

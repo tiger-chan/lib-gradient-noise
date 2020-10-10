@@ -4,7 +4,6 @@
 #include "../config/config.hpp"
 #include "../core/noise_config.hpp"
 #include "fwd.hpp"
-#include "config.hpp"
 #include "generation.hpp"
 
 #ifndef UPROAR_PERLIN_OCTIVE_COUNT_DEFAULT
@@ -41,7 +40,7 @@ namespace tc
 		} // namespace defaults
 
 		template <typename Noise>
-		class UPROAR_API perlin : public generation<perlin<Noise>>
+		class UPROAR_API perlin : public generation<perlin<Noise>>, public fractal_task
 		{
 			friend class generation<perlin<Noise>>;
 
@@ -87,8 +86,9 @@ namespace tc
 				config_ = config;
 			}
 
-			void set_seed(uint32_t seed) UPROAR_NOEXCEPT
+			void set_seed(uint32_t seed) UPROAR_NOEXCEPT final
 			{
+				fractal_task::set_seed(seed);
 				noise_ = Noise{seed};
 			}
 

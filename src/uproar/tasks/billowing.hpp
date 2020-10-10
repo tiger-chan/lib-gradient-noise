@@ -5,7 +5,6 @@
 #include "../core/noise_config.hpp"
 #include "fwd.hpp"
 #include "generation.hpp"
-#include "config.hpp"
 
 #ifndef BILLOWING_OCTIVE_COUNT_DEFAULT
 #define BILLOWING_OCTIVE_COUNT_DEFAULT 6
@@ -41,7 +40,7 @@ namespace tc
 		}
 
 		template <typename Noise>
-		class UPROAR_API billowing : public generation<billowing<Noise>>
+		class UPROAR_API billowing : public generation<billowing<Noise>>, public fractal_task
 		{
 			friend class generation<billowing<Noise>>;
 		public:
@@ -81,7 +80,9 @@ namespace tc
 				config_ = config;
 			}
 
-			void set_seed(uint32_t seed) UPROAR_NOEXCEPT {
+			void set_seed(uint32_t seed) UPROAR_NOEXCEPT final
+			{
+				fractal_task::set_seed(seed);
 				noise_ = Noise{seed};
 			}
 
