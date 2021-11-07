@@ -1,68 +1,61 @@
 #ifndef UPROAR_TASKS_TASK_TREE
 #define UPROAR_TASKS_TASK_TREE
 
-#include <unordered_map>
 #include "../config/config.hpp"
 #include "../core/attributes.hpp"
-#include "../core/scoped_ptr.hpp"
-#include "parse.hpp"
-#include "task_factory.hpp"
-#include "base_task.hpp"
-
 #include "../core/perlin-noise.hpp"
-#include "constant.hpp"
+#include "../core/scoped_ptr.hpp"
+#include "base_task.hpp"
+#include "bias.hpp"
 #include "billowing.hpp"
+#include "cache.hpp"
+#include "constant.hpp"
+#include "gradient.hpp"
+#include "map_range.hpp"
+#include "multiply.hpp"
+#include "parse.hpp"
 #include "perlin.hpp"
 #include "ridged_multifractal.hpp"
-#include "gradient.hpp"
-
-#include "map_range.hpp"
 #include "scale_bias.hpp"
 #include "scale_domain.hpp"
-#include "translate_domain.hpp"
-#include "bias.hpp"
-
-#include "multiply.hpp"
-
 #include "selector.hpp"
-#include "cache.hpp"
+#include "task_factory.hpp"
+#include "translate_domain.hpp"
 
-namespace tc
-{
-	namespace task
-	{
+#include <unordered_map>
+
+namespace tc {
+	namespace task {
 		template<typename TreeObject, typename TreeObjectValue>
-		class UPROAR_API task_tree : public base_task
-		{
+		class UPROAR_API task_tree : public base_task {
 			using map_t = std::unordered_map<std::string, scope_ptr<base_task>>;
-			using factory_t =  task_factory<TreeObject, TreeObjectValue>;
+			using factory_t = task_factory<TreeObject, TreeObjectValue>;
 			using parse_t = typename factory_t::parse_t;
 			using config_t = factory_callable<parse_t()>;
-			public:
 
-			task_tree()
-			{
+		public:
+			task_tree() {
 				static std::unordered_map<std::string, config_t> configurations;
 				static bool registered = false;
 				if (!registered) {
-					static const std::string constant_key{"constant"};
-					static const std::string billowing_key{"billowing"};
-					static const std::string perlin_key{"perlin"};
-					static const std::string ridged_multi_key{"ridged_multi"};
-					static const std::string gradient_key{"gradient"};
-					static const std::string map_range_key{"map_range"};
-					static const std::string scale_bias_key{"scale_bias"};
-					static const std::string scale_domain_key{"scale"};
-					static const std::string translate_domain_key{"translate"};
-					static const std::string bias_key{"bias"};
-					static const std::string selector_key{"selector"};
-					static const std::string cache_key{"cache"};
-					static const std::string additive_key{"additive"};
-					static const std::string multiply_key{"multiply"};
-					auto& instance = task_factory_v<TreeObject, TreeObjectValue>;
+					static const std::string constant_key{ "constant" };
+					static const std::string billowing_key{ "billowing" };
+					static const std::string perlin_key{ "perlin" };
+					static const std::string ridged_multi_key{ "ridged_multi" };
+					static const std::string gradient_key{ "gradient" };
+					static const std::string map_range_key{ "map_range" };
+					static const std::string scale_bias_key{ "scale_bias" };
+					static const std::string scale_domain_key{ "scale" };
+					static const std::string translate_domain_key{ "translate" };
+					static const std::string bias_key{ "bias" };
+					static const std::string selector_key{ "selector" };
+					static const std::string cache_key{ "cache" };
+					static const std::string additive_key{ "additive" };
+					static const std::string multiply_key{ "multiply" };
+					auto &instance = task_factory_v<TreeObject, TreeObjectValue>;
 
 					configurations[constant_key] = instance.record_task<constant>(constant_key);
-					configurations[billowing_key] =  instance.record_task<billowing<perlin_quintic>>(billowing_key);
+					configurations[billowing_key] = instance.record_task<billowing<perlin_quintic>>(billowing_key);
 					configurations[perlin_key] = instance.record_task<perlin<perlin_quintic>>(perlin_key);
 					configurations[ridged_multi_key] = instance.record_task<ridged_multifractal<perlin_quintic>>(ridged_multi_key);
 					configurations[gradient_key] = instance.record_task<gradient>(gradient_key);
@@ -79,58 +72,50 @@ namespace tc
 					registered = true;
 				}
 
-				for (const auto& pair: configurations) {
+				for (const auto &pair : configurations) {
 					parsers[pair.first] = pair.second();
 				}
 
 				callback.tasks = &tasks;
 				rendered_task = std::end(tasks);
 			}
-			
+
 			template<typename Iter>
-			void read(Iter begin, Iter end)
-			{
-				for (auto it = begin; it != end; ++it)
-				{
+			void read(Iter begin, Iter end) {
+				for (auto it = begin; it != end; ++it) {
 					spawn(*it);
 				}
 
-				for (auto it = begin; it != end; ++it)
-				{
+				for (auto it = begin; it != end; ++it) {
 					configure(*it);
 				}
 			}
 
-			void read(const TreeObject& object)
-			{
+			void read(const TreeObject &object) {
 				spawn(object);
 				configure(object);
 			}
 
-			decimal_t eval(decimal_t x) const final
-			{
+			decimal_t eval(decimal_t x) const final {
 				return rendered_task->second->eval(x);
 			}
 
-			decimal_t eval(decimal_t x, decimal_t y) const final
-			{
+			decimal_t eval(decimal_t x, decimal_t y) const final {
 				return rendered_task->second->eval(x, y);
 			}
 
-			decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const final
-			{
+			decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const final {
 				return rendered_task->second->eval(x, y, z);
 			}
 
-			private:
-			void spawn(const TreeObject& object)
-			{
+		private:
+			void spawn(const TreeObject &object) {
 				task_details details{};
 				parse<TreeObject, task_details>{}(details, object);
 
-				const auto& type =  details.type;
+				const auto &type = details.type;
 
-				auto& instance = task_factory_v<TreeObject, TreeObjectValue>;
+				auto &instance = task_factory_v<TreeObject, TreeObjectValue>;
 				auto t = instance.spawn(type);
 
 				if (!t.is_valid()) {
@@ -138,7 +123,7 @@ namespace tc
 					return;
 				}
 
-				const auto& name = details.name;
+				const auto &name = details.name;
 
 				auto rendered_name = name;
 				if (rendered_task != std::end(tasks)) {
@@ -150,26 +135,24 @@ namespace tc
 				if (details.rendered) {
 					rendered_task = task.first;
 				}
-				else
-				{
+				else {
 					rendered_task = tasks.find(rendered_name);
-				}				
+				}
 			}
 
-			void configure(const TreeObject& object)
-			{
+			void configure(const TreeObject &object) {
 				task_details details{};
 				parse<TreeObject, task_details>{}(details, object);
 
-				const auto& type =  details.type;
-				const auto& name =  details.name;
+				const auto &type = details.type;
+				const auto &name = details.name;
 
 				auto task = tasks.find(name);
 				if (task == std::end(tasks)) {
 					return;
 				}
 
-				auto& instance = task_factory_v<TreeObject, TreeObjectValue>;
+				auto &instance = task_factory_v<TreeObject, TreeObjectValue>;
 				parsers[type](task->second, object, callback);
 			}
 
@@ -178,7 +161,7 @@ namespace tc
 			std::unordered_map<std::string, parse_t> parsers;
 			parse_callback<TreeObjectValue> callback{};
 		};
-	};
-}
+	};    // namespace task
+}    // namespace tc
 
-#endif // UPROAR_TASKS_TASK_TREE
+#endif    // UPROAR_TASKS_TASK_TREE

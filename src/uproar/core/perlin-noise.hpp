@@ -3,21 +3,19 @@
 
 #include "../config/config.hpp"
 #include "../core/attributes.hpp"
-#include <array>
 #include "algorithm.hpp"
 #include "curve_blend.hpp"
 #include "random.hpp"
 
-namespace tc
-{
-	namespace internal
-	{
+#include <array>
+
+namespace tc {
+	namespace internal {
 		// https://mrl.nyu.edu/~perlin/noise/
-		static constexpr std::array<int32_t, 512> perlin_permutations()
-		{
+		static constexpr std::array<int32_t, 512> perlin_permutations() {
 			constexpr auto permutation_size = 256;
 			constexpr auto p_size = 512;
-			std::array<int32_t, permutation_size> permutation = {
+			std::array<int32_t, permutation_size> permutation{
 				151, 160, 137, 91, 90, 15, 131, 13, 201, 95, 96, 53, 194, 233, 7, 225,
 				140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23, 190, 6, 148,
 				247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219, 203, 117, 35, 11, 32, 57,
@@ -33,77 +31,65 @@ namespace tc
 				246, 97, 228, 251, 34, 242, 193, 238, 210, 144, 12, 191, 179, 162, 241, 81,
 				51, 145, 235, 249, 14, 239, 107, 49, 192, 214, 31, 181, 199, 106, 157, 184,
 				84, 204, 176, 115, 121, 50, 45, 127, 4, 150, 254, 138, 236, 205, 93, 222,
-				114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180};
+				114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180
+			};
 
 			std::array<int, p_size> p{};
 
-			for (int i = 0; i < permutation_size; i++)
-			{
+			for (int i = 0; i < permutation_size; i++) {
 				p[permutation_size + i] = p[i] = permutation[i];
 			}
 
 			return p;
 		}
 
-		static std::array<int32_t, 512> perlin_permutations(uint32_t seed)
-		{
-			random r{seed};
+		static std::array<int32_t, 512> perlin_permutations(uint32_t seed) {
+			random r{ seed };
 			std::array<int32_t, 512> result;
 			auto tmp = r.uniform_distribution<int32_t>(0, 255);
 
-			for (auto i = 0; i < 256; ++i)
-			{
+			for (auto i = 0; i < 256; ++i) {
 				result[i] = result[i + 256] = tmp[i];
 			}
 
 			return result;
 		}
 
-		static constexpr std::array<double, 16> perlin_gradiant_1d()
-		{
+		static constexpr std::array<double, 16> perlin_gradiant_1d() {
 			constexpr int32_t count = 16;
 			constexpr double half_count = count / 2.0;
 			std::array<double, count> grad{};
-			for (auto i = 0; i < count; ++i)
-			{
-				if (i < half_count)
-				{
+			for (auto i = 0; i < count; ++i) {
+				if (i < half_count) {
 					grad[i] = (i - half_count) / half_count;
 				}
-				else
-				{
+				else {
 					grad[i] = (i - half_count + 1.0) / half_count;
 				}
 			}
 
 			return grad;
 		}
-	} // namespace internal
+	}    // namespace internal
 
-	template <typename Blend>
-	class UPROAR_API perlin_noise
-	{
+	template<typename Blend>
+	class UPROAR_API perlin_noise {
 	public:
-		perlin_noise() UPROAR_NOEXCEPT : perm{internal::perlin_permutations()}
-		{
+		perlin_noise() UPROAR_NOEXCEPT : perm{ internal::perlin_permutations() } {
 		}
 
-		perlin_noise(uint32_t seed) UPROAR_NOEXCEPT : perm{internal::perlin_permutations(seed)}
-		{
+		perlin_noise(uint32_t seed) UPROAR_NOEXCEPT : perm{ internal::perlin_permutations(seed) } {
 		}
 
-		void reset() UPROAR_NOEXCEPT
-		{
+		void reset() UPROAR_NOEXCEPT {
 			perm = internal::perlin_permutations();
 		}
 
-		void reset(uint32_t seed) UPROAR_NOEXCEPT
-		{
+		void reset(uint32_t seed) UPROAR_NOEXCEPT {
 			perm = internal::perlin_permutations(seed);
 		}
 
-		double eval(double x) const UPROAR_NOEXCEPT
-		{
+		double eval(double x) const UPROAR_NOEXCEPT {
 			auto x0 = tc::quick_floor(x);
 			auto x1 = x0 + 1.0;
 
@@ -121,8 +107,7 @@ namespace tc
 			return lerp(p0, p1, u);
 		}
 
-		double eval(double x, double y) const UPROAR_NOEXCEPT
-		{
+		double eval(double x, double y) const UPROAR_NOEXCEPT {
 			double x0 = tc::quick_floor(x);
 			double y0 = tc::quick_floor(y);
 			int32_t xi = static_cast<int32_t>(x0) & index_mask;
@@ -152,8 +137,7 @@ namespace tc
 			return lerp(l1, l2, v);
 		}
 
-		double eval(double x, double y, double z) const UPROAR_NOEXCEPT
-		{
+		double eval(double x, double y, double z) const UPROAR_NOEXCEPT {
 			// https://mrl.nyu.edu/~perlin/noise/
 			// Find unit cube that contains point.
 			double x0 = tc::quick_floor(x);
@@ -212,61 +196,55 @@ namespace tc
 		}
 
 	private:
-		double fade(double t) const UPROAR_NOEXCEPT
-		{
+		double fade(double t) const UPROAR_NOEXCEPT {
 			return blender(t);
 		}
 
-		static double grad(int32_t hash, double x) UPROAR_NOEXCEPT
-		{
+		static double grad(int32_t hash, double x) UPROAR_NOEXCEPT {
 			static constexpr auto grad = internal::perlin_gradiant_1d();
-			int h = hash & 15; // Convert lo 4 bits of hash code
-			return grad[h];	   // * x;
+			int h = hash & 15;    // Convert lo 4 bits of hash code
+			return grad[h];    // * x;
 		}
 
-		static double grad(int32_t hash, double x, double y) UPROAR_NOEXCEPT
-		{
-			int32_t h = hash & 7; // Convert lo 3 bits of hash code
-			switch (h)
-			{
-			case 0: return x;
-			case 1: return x + y;
-			case 2: return y;
-			case 3: return -x + y;
-			case 4: return -x;
-			case 5: return -x - y;
-			case 6: return -y;
-			case 7: return x - y;
+		static double grad(int32_t hash, double x, double y) UPROAR_NOEXCEPT {
+			int32_t h = hash & 7;    // Convert lo 3 bits of hash code
+			switch (h) {
+				case 0: return x;
+				case 1: return x + y;
+				case 2: return y;
+				case 3: return -x + y;
+				case 4: return -x;
+				case 5: return -x - y;
+				case 6: return -y;
+				case 7: return x - y;
 			}
 
 			return 0;
 		}
 
-		double grad(int hash, double x, double y, double z) const UPROAR_NOEXCEPT
-		{
-			switch (hash & 15)
-			{
-			// 12 cube midpoints
-			case 0: return x + z;
-			case 1: return x + y;
-			case 2: return y + z;
-			case 3: return -x + y;
-			case 4: return -x + z;
-			case 5: return -x - y;
-			case 6: return -y + z;
-			case 7: return x - y;
-			case 8: return x - z;
-			case 9: return y - z;
-			case 10: return -x - z;
-			case 11: return -y - z;
-			// 4 vertices of regular tetrahedron
-			case 12: return x + y;
-			case 13: return -x + y;
-			case 14: return -y + z;
-			case 15: return -y - z;
-			// This can't happen
-			default:
-				return 0;
+		double grad(int hash, double x, double y, double z) const UPROAR_NOEXCEPT {
+			switch (hash & 15) {
+				// 12 cube midpoints
+				case 0: return x + z;
+				case 1: return x + y;
+				case 2: return y + z;
+				case 3: return -x + y;
+				case 4: return -x + z;
+				case 5: return -x - y;
+				case 6: return -y + z;
+				case 7: return x - y;
+				case 8: return x - z;
+				case 9: return y - z;
+				case 10: return -x - z;
+				case 11: return -y - z;
+				// 4 vertices of regular tetrahedron
+				case 12: return x + y;
+				case 13: return -x + y;
+				case 14: return -y + z;
+				case 15: return -y - z;
+				// This can't happen
+				default:
+					return 0;
 			}
 
 			// https://mrl.nyu.edu/~perlin/noise/
@@ -285,6 +263,6 @@ namespace tc
 
 	using perlin_cubic = perlin_noise<cubic_blend>;
 	using perlin_quintic = perlin_noise<quintic_blend>;
-} // namespace tc
+}    // namespace tc
 
-#endif // UPROAR_CORE_PERLIN_NOISE_HPP
+#endif    // UPROAR_CORE_PERLIN_NOISE_HPP

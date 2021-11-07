@@ -5,71 +5,66 @@
 #include "../core/noise_config.hpp"
 #include "fwd.hpp"
 #include "generation.hpp"
+
 #include <array>
 
 #ifndef RIDGED_MULTIFRACTAL_OCTIVE_COUNT_DEFAULT
-#define RIDGED_MULTIFRACTAL_OCTIVE_COUNT_DEFAULT 6
+#	define RIDGED_MULTIFRACTAL_OCTIVE_COUNT_DEFAULT 6
 #endif
 
 #ifndef RIDGED_MULTIFRACTAL_LACUNARITY_DEFAULT
-#define RIDGED_MULTIFRACTAL_LACUNARITY_DEFAULT 2.0
+#	define RIDGED_MULTIFRACTAL_LACUNARITY_DEFAULT 2.0
 #endif
 
 #ifndef RIDGED_MULTIFRACTAL_PERSISTANCE_DEFAULT
-#define RIDGED_MULTIFRACTAL_PERSISTANCE_DEFAULT 0.5
+#	define RIDGED_MULTIFRACTAL_PERSISTANCE_DEFAULT 0.5
 #endif
 
 #ifndef RIDGED_MULTIFRACTAL_FREQUENCY_DEFAULT
-#define RIDGED_MULTIFRACTAL_FREQUENCY_DEFAULT 1.0
+#	define RIDGED_MULTIFRACTAL_FREQUENCY_DEFAULT 1.0
 #endif
 
 #ifndef RIDGED_MULTIFRACTAL_EXPONENT_DEFAULT
-#define RIDGED_MULTIFRACTAL_EXPONENT_DEFAULT 0.9
+#	define RIDGED_MULTIFRACTAL_EXPONENT_DEFAULT 0.9
 #endif
 
 #ifndef RIDGED_MULTIFRACTAL_OFFSET_DEFAULT
-#define RIDGED_MULTIFRACTAL_OFFSET_DEFAULT 1.0
+#	define RIDGED_MULTIFRACTAL_OFFSET_DEFAULT 1.0
 #endif
 
 #ifndef RIDGED_MULTIFRACTAL_MAX_OCTAVES_DEFAULT
-#define RIDGED_MULTIFRACTAL_MAX_OCTAVES_DEFAULT 30
+#	define RIDGED_MULTIFRACTAL_MAX_OCTAVES_DEFAULT 30
 #endif
 
-namespace tc
-{
-	namespace task
-	{
-		namespace defaults
-		{
-			static constexpr UPROAR_OCTAVE_TYPE ridged_multifractal_octaves{RIDGED_MULTIFRACTAL_OCTIVE_COUNT_DEFAULT};
-			static constexpr UPROAR_OCTAVE_TYPE ridged_multifractal_max_octaves{RIDGED_MULTIFRACTAL_MAX_OCTAVES_DEFAULT};
-			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_lacunarity{RIDGED_MULTIFRACTAL_LACUNARITY_DEFAULT};
-			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_persistance{RIDGED_MULTIFRACTAL_PERSISTANCE_DEFAULT};
-			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_frequency{RIDGED_MULTIFRACTAL_FREQUENCY_DEFAULT};
-			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_exponent{RIDGED_MULTIFRACTAL_EXPONENT_DEFAULT};
-			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_offset{RIDGED_MULTIFRACTAL_OFFSET_DEFAULT};
-		} // namespace defaults
+namespace tc {
+	namespace task {
+		namespace defaults {
+			static constexpr UPROAR_OCTAVE_TYPE ridged_multifractal_octaves{ RIDGED_MULTIFRACTAL_OCTIVE_COUNT_DEFAULT };
+			static constexpr UPROAR_OCTAVE_TYPE ridged_multifractal_max_octaves{ RIDGED_MULTIFRACTAL_MAX_OCTAVES_DEFAULT };
+			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_lacunarity{ RIDGED_MULTIFRACTAL_LACUNARITY_DEFAULT };
+			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_persistance{ RIDGED_MULTIFRACTAL_PERSISTANCE_DEFAULT };
+			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_frequency{ RIDGED_MULTIFRACTAL_FREQUENCY_DEFAULT };
+			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_exponent{ RIDGED_MULTIFRACTAL_EXPONENT_DEFAULT };
+			static constexpr UPROAR_DECIMAL_TYPE ridged_multifractal_offset{ RIDGED_MULTIFRACTAL_OFFSET_DEFAULT };
+		}    // namespace defaults
 
-		struct UPROAR_API ridged_multi_config : public noise_config
-		{
-			decimal_t exponent{defaults::ridged_multifractal_exponent};
-			decimal_t offset{defaults::ridged_multifractal_offset};
+		struct UPROAR_API ridged_multi_config : public noise_config {
+			decimal_t exponent{ defaults::ridged_multifractal_exponent };
+			decimal_t offset{ defaults::ridged_multifractal_offset };
 		};
 
-		template <typename Noise>
-		class UPROAR_API ridged_multifractal : public generation<ridged_multifractal<Noise>>, public fractal_task
-		{
+		template<typename Noise>
+		class UPROAR_API ridged_multifractal : public generation<ridged_multifractal<Noise>>
+			, public fractal_task {
 			friend class generation<ridged_multifractal<Noise>>;
 
 		public:
-			struct correction
-			{
-				decimal_t scale{0};
-				decimal_t bias{0};
+			struct correction {
+				decimal_t scale{ 0 };
+				decimal_t bias{ 0 };
 			};
 
-			ridged_multifractal() UPROAR_NOEXCEPT
-			{
+			ridged_multifractal() UPROAR_NOEXCEPT {
 				calc_weights(config_);
 			}
 
@@ -80,8 +75,7 @@ namespace tc
 				decimal_t frequency = defaults::ridged_multifractal_frequency,
 				decimal_t exponent = defaults::ridged_multifractal_exponent,
 				decimal_t offset = defaults::ridged_multifractal_offset) UPROAR_NOEXCEPT
-				: config_{octaves, lacunarity, persistance, frequency, 0, exponent, offset}
-			{
+				: config_{ octaves, lacunarity, persistance, frequency, 0, exponent, offset } {
 				calc_weights(config_);
 			}
 
@@ -93,40 +87,33 @@ namespace tc
 				decimal_t frequency = defaults::ridged_multifractal_frequency,
 				decimal_t exponent = defaults::ridged_multifractal_exponent,
 				decimal_t offset = defaults::ridged_multifractal_exponent) UPROAR_NOEXCEPT
-				: ridged_multifractal(octaves, lacunarity, persistance, frequency, exponent, offset),
-				  noise{seed}
-			{
+				: ridged_multifractal(octaves, lacunarity, persistance, frequency, exponent, offset)
+				, noise{ seed } {
 			}
 
-			const ridged_multi_config &config() const
-			{
+			const ridged_multi_config &config() const {
 				return config_;
 			}
 
-			void set_config(const ridged_multi_config &config)
-			{
-				if (config.lacunarity != config_.lacunarity || config.offset != config_.offset || config.exponent != config.exponent)
-				{
+			void set_config(const ridged_multi_config &config) {
+				if (config.lacunarity != config_.lacunarity || config.offset != config_.offset || config.exponent != config.exponent) {
 					calc_weights(config);
 				}
 				config_ = config;
 			}
 
-			void set_seed(uint32_t seed) UPROAR_NOEXCEPT final
-			{
+			void set_seed(uint32_t seed) UPROAR_NOEXCEPT final {
 				fractal_task::set_seed(seed);
-				noise_ = Noise{seed};
+				noise_ = Noise{ seed };
 			}
 
 		private:
-			template <typename... Args>
-			decimal_t eval_impl(Args &&... args) const UPROAR_NOEXCEPT
-			{
-				decimal_t result{0.0};
-				decimal_t freq{config_.frequency};
+			template<typename... Args>
+			decimal_t eval_impl(Args &&...args) const UPROAR_NOEXCEPT {
+				decimal_t result{ 0.0 };
+				decimal_t freq{ config_.frequency };
 
-				for (auto octave = 0; octave < config_.octaves; ++octave)
-				{
+				for (auto octave = 0; octave < config_.octaves; ++octave) {
 					auto tmp = noise_.eval((std::forward<Args>(args) * freq + octave)...);
 					tmp = config_.offset - fabs(tmp);
 					tmp *= tmp;
@@ -140,23 +127,21 @@ namespace tc
 				return result * corrections.scale + corrections.bias;
 			}
 
-			void calc_weights(const ridged_multi_config &config) UPROAR_NOEXCEPT
-			{
-				static constexpr decimal_t one{1};
-				decimal_t min{0};
-				decimal_t max{0};
-				decimal_t freq{config.lacunarity};
-				for (auto i = 0; i < defaults::ridged_multifractal_max_octaves; ++i)
-				{
+			void calc_weights(const ridged_multi_config &config) UPROAR_NOEXCEPT {
+				static constexpr decimal_t one{ 1 };
+				decimal_t min{ 0 };
+				decimal_t max{ 0 };
+				decimal_t freq{ config.lacunarity };
+				for (auto i = 0; i < defaults::ridged_multifractal_max_octaves; ++i) {
 					weights_[i] = pow(freq, -config.exponent);
 					freq *= config.lacunarity;
 
 					min += (config.offset - one) * (config.offset - one) * weights_[i];
 					max += config.offset * config.offset * weights_[i];
-					decimal_t a{-1}, b{1};
+					decimal_t a{ -1 }, b{ 1 };
 					decimal_t scale = (b - a) / (max - min);
 					decimal_t bias = a - (min * scale);
-					corrections_[i] = correction{scale, bias};
+					corrections_[i] = correction{ scale, bias };
 				}
 			}
 
@@ -174,7 +159,7 @@ namespace tc
 			std::array<decimal_t, defaults::ridged_multifractal_max_octaves> weights_{};
 			std::array<correction, defaults::ridged_multifractal_max_octaves> corrections_{};
 		};
-	} // namespace task
-} // namespace tc
+	}    // namespace task
+}    // namespace tc
 
-#endif // UPROAR_TASKS_RIDGED_MULTIFRACTAL_HPP
+#endif    // UPROAR_TASKS_RIDGED_MULTIFRACTAL_HPP

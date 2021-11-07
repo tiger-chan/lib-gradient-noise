@@ -4,4 +4,4 @@
 #include "core/scoped_ptr.hpp"
 #include "core/singleton_base.hpp"
 
-#endif // UPROAR_MEMORY_HPP
+#endif    // UPROAR_MEMORY_HPP

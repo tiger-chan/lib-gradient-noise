@@ -1,74 +1,64 @@
 #ifndef UPROAR_TASKS_CACHE_HPP
 #define UPROAR_TASKS_CACHE_HPP
 
-#include <array>
 #include "../config/config.hpp"
 #include "../core/attributes.hpp"
 #include "../core/utlities.hpp"
-#include "fwd.hpp"
 #include "base_task.hpp"
+#include "fwd.hpp"
 #include "task_source.hpp"
 
-namespace tc
-{
-	namespace task
-	{
-		namespace defaults
-		{
-			static constexpr uint8_t cache_max_dimension{UPROAR_MAX_VARIABLES};
-			static constexpr uint8_t cache_max_variables{UPROAR_MAX_VARIABLES};
-		} // namespace defaults
+#include <array>
 
-		class UPROAR_API cache : public base_task
-		{
-			struct UPROAR_API item : public std::array<decimal_t, defaults::cache_max_variables>
-			{
+namespace tc {
+	namespace task {
+		namespace defaults {
+			static constexpr uint8_t cache_max_dimension{ UPROAR_MAX_VARIABLES };
+			static constexpr uint8_t cache_max_variables{ UPROAR_MAX_VARIABLES };
+		}    // namespace defaults
+
+		class UPROAR_API cache : public base_task {
+			struct UPROAR_API item : public std::array<decimal_t, defaults::cache_max_variables> {
 				using Super = std::array<decimal_t, defaults::cache_max_variables>;
 				using Super::Super;
 
-				bool is_valid{false};
+				bool is_valid{ false };
 				decimal_t value;
 			};
 
 		public:
-			void set_source(task_source src)
-			{
+			void set_source(task_source src) {
 				source_ = src;
 			}
 
-			decimal_t eval(decimal_t x) const final
-			{
+			decimal_t eval(decimal_t x) const final {
 				return eval_impl(x);
 			}
 
-			decimal_t eval(decimal_t x, decimal_t y) const final
-			{
+			decimal_t eval(decimal_t x, decimal_t y) const final {
 				return eval_impl(x, y);
 			}
 
-			decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const final
-			{
+			decimal_t eval(decimal_t x, decimal_t y, decimal_t z) const final {
 				return eval_impl(x, y, z);
 			}
 
 		private:
-			template <typename... Args>
-			decimal_t eval_impl(Args &&... args) const UPROAR_NOEXCEPT
-			{
+			template<typename... Args>
+			decimal_t eval_impl(Args &&...args) const UPROAR_NOEXCEPT {
 				constexpr uint32_t arg_count = sizeof...(args);
 				std::array<decimal_t, defaults::cache_max_dimension> t_args{
-					std::forward<Args>(args)...};
+					std::forward<Args>(args)...
+				};
 
 				item &store = stack_[arg_count - 1];
 				auto is_stale = !store.is_valid;
-				for (uint32_t i = 0; i < arg_count; ++i)
-				{
+				for (uint32_t i = 0; i < arg_count; ++i) {
 					is_stale |= (store[i] != t_args[i]);
 					store[i] = t_args[i];
 				}
 
-				if (is_stale)
-				{
+				if (is_stale) {
 					store.value = source_.eval(std::forward<Args>(args)...);
 					store.is_valid = true;
 				}
@@ -80,7 +70,7 @@ namespace tc
 			task_source source_{};
 			mutable std::array<item, defaults::cache_max_dimension> stack_{};
 		};
-	} // namespace task
-} // namespace tc
+	}    // namespace task
+}    // namespace tc
 
-#endif // UPROAR_TASKS_CACHE_HPP
+#endif    // UPROAR_TASKS_CACHE_HPP
