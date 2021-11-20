@@ -41,32 +41,33 @@ namespace tc {
 			template<typename Outer, typename ObjType>
 			template<typename Y>
 			member_object<Outer, ObjType>::member_object(ObjType &obj, member_ptr<Outer, Y> mem) {
-				if constexpr (std::is_same_v<Y, bool>) {
-					std::get<Setter<bool>>(setters) = [](ObjType &obj, context_stack &stack, int stack_pos, Outer &outer, id_type member_idx, std::string_view name, const bool &value) {
-						set_impl<Y, bool>(stack, stack_pos, outer, obj.prop_ptrs<Y>[member_idx], name, value);
-					};
-				}
-				else {
-					std::get<Setter<bool>>(setters) = [](ObjType &, context_stack &, int, Outer &, id_type, std::string_view, const bool &) {};
-				}
 
-				if constexpr (std::is_same_v<Y, char>) {
-					std::get<Setter<char>>(setters) = [](ObjType &obj, context_stack &stack, int stack_pos, Outer &outer, id_type member_idx, std::string_view name, const char &value) {
-						set_impl<Y, char>(stack, stack_pos, outer, obj.prop_ptrs<Y>[member_idx], name, value);
-					};
-				}
-				else {
-					std::get<Setter<char>>(setters) = [](ObjType &, context_stack &, int, Outer &, id_type, std::string_view, const char &) {};
-				}
+#define SET_TYPE(TYPE) \
+	if constexpr (std::is_same_v<Y, TYPE>) { \
+		std::get<Setter<TYPE>>(setters) = [](ObjType &obj, context_stack &stack, int stack_pos, Outer &outer, id_type member_idx, std::string_view name, const TYPE &value) { \
+			set_impl<Y, TYPE>(stack, stack_pos, outer, obj.prop_ptrs<Y>[member_idx], name, value); \
+		}; \
+	} \
+	else { \
+		std::get<Setter<TYPE>>(setters) = [](ObjType &, context_stack &, int, Outer &, id_type, std::string_view, const TYPE &) {}; \
+	}
 
-				if constexpr (std::is_integral_v<Y>) {
-					std::get<Setter<int>>(setters) = [](ObjType &obj, context_stack &stack, int stack_pos, Outer &outer, id_type member_idx, std::string_view name, const int &value) {
-						set_impl<Y, int>(stack, stack_pos, outer, obj.prop_ptrs<Y>[member_idx], name, value);
-					};
-				}
-				else {
-					std::get<Setter<int>>(setters) = [](ObjType &, context_stack &, int, Outer &, id_type, std::string_view, const int &) {};
-				}
+				SET_TYPE(bool);
+				
+				SET_TYPE(char);
+				SET_TYPE(int16);
+				SET_TYPE(int32);
+				SET_TYPE(int64);
+				
+				SET_TYPE(uint8);
+				SET_TYPE(uint16);
+				SET_TYPE(uint32);
+				SET_TYPE(uint64);
+				
+				SET_TYPE(float);
+				SET_TYPE(double);
+
+#undef SET_TYPE
 
 				std::get<Setter<std::string>>(setters) = [](ObjType &obj, context_stack &stack, int stack_pos, Outer &outer, id_type member_idx, std::string_view name, const std::string &value) {
 					set_impl<Y, std::string>(stack, stack_pos, outer, obj.prop_ptrs<Y>[member_idx], name, value);
@@ -107,22 +108,33 @@ namespace tc {
 			template<typename Outer, typename ObjType>
 			template<typename Prop>
 			member_primitive<Outer, ObjType>::member_primitive(ObjType &obj, member_ptr<Outer, Prop> mem) {
-				if constexpr (member_type_trait_v<Prop> == MT_bool) {
-					setter = [](ObjType &obj, member_context& ctx, Outer &outer, id_type member_idx, const bool &value) -> void {
-						set_impl<Prop, bool>(obj, ctx, outer, obj.props[member_idx], value);
-					};
-				}
-				else if constexpr (member_type_trait_v<Prop> == MT_char) {
-					setter = [](ObjType &obj, member_context& ctx, Outer &outer, id_type member_idx, const char &value) -> void {
-						set_impl<Prop, char>(obj, ctx, outer, obj.props[member_idx], value);
-					};
-				}
-				else if constexpr (member_type_trait_v<Prop> == MT_int32) {
-					setter = [](ObjType &obj, member_context& ctx, Outer &outer, id_type member_idx, const int &value) -> void {
-						set_impl<Prop, int>(obj, ctx, outer, obj.props[member_idx], value);
-					};
-				}
+#define SET_TYPE(TYPE) \
+	if constexpr (std::is_same_v<Prop, TYPE>) { \
+		setter_type = PrimitiveType<TYPE>{}; \
+		setter = [](ObjType &obj, member_context &ctx, Outer &outer, id_type member_idx, const TYPE &value) -> void { \
+			set_impl<Prop, TYPE>(obj, ctx, outer, obj.props[member_idx], value); \
+		}; \
+	}
+
+				SET_TYPE(bool)
+
+				else SET_TYPE(char)
+				else SET_TYPE(int16)
+				else SET_TYPE(int32)
+				else SET_TYPE(int64)
+				
+				else SET_TYPE(uint8)
+				else SET_TYPE(uint16)
+				else SET_TYPE(uint32)
+				else SET_TYPE(uint64)
+
+				else SET_TYPE(float)
+				else SET_TYPE(double)
+
+#undef SET_TYPE
+
 				else if constexpr (member_type_trait_v<Prop> == MT_string || member_type_trait_v<Prop> == MT_enum) {
+					setter_type = PrimitiveType<std::string>{};
 					setter = [](ObjType &obj, member_context& ctx, Outer &outer, id_type member_idx, const std::string &value) -> void {
 						set_impl<Prop, std::string>(obj, ctx, outer, obj.props[member_idx], value);
 					};
@@ -132,8 +144,14 @@ namespace tc {
 			template<typename Outer, typename ObjType>
 			template<typename Value>
 			void member_primitive<Outer, ObjType>::set_value(ObjType &obj, member_context& ctx, Outer &outer, id_type member_idx, const Value &value) {
-				Setter<Value> &set = std::get<Setter<Value>>(setter);
-				set(obj, ctx, outer, member_idx, value);
+				auto handler = [this, &obj, &ctx, &outer, &member_idx, &value](auto& primitive){
+					using Type = typename std::decay_t<decltype(primitive)>::type;
+					if constexpr (std::is_convertible_v<Value, Type>) {
+						auto &set = std::get<PrimitiveSetter<Type>>(setter);
+						set(obj, ctx, outer, member_idx, static_cast<Type>(value));
+					}
+				};
+				std::visit(handler,  setter_type);
 			}
 
 			template<typename Outer, typename ObjType>
@@ -166,18 +184,9 @@ namespace tc {
 		object<X> object<X>::instance{};
 
 		template<typename Type>
-		void object<Type>::set_bool(context_stack &stack, Type &obj, std::string_view name, bool value) {
-			set_value<bool>(stack, 0, obj, name, value);
-		}
-
-		template<typename Type>
-		void object<Type>::set_char(context_stack &stack, Type &obj, std::string_view name, char value) {
-			set_value<char>(stack, 0, obj, name, value);
-		}
-
-		template<typename Type>
-		void object<Type>::set_int(context_stack &stack, Type &obj, std::string_view name, int value) {
-			set_value<int>(stack, 0, obj, name, value);
+		template<typename Value>
+		void object<Type>::set_value(context_stack &stack, Type &obj, std::string_view name, const Value& value) {
+			set_value<Value>(stack, 0, obj, name, value);
 		}
 
 		template<typename Type>

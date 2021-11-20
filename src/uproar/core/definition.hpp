@@ -5,7 +5,21 @@
 
 #include <type_traits>
 #include <unordered_map>
+#include <tuple>
 #include <variant>
+
+#ifndef TC_STDINT
+#define TC_STDINT
+using int8 = signed char;
+using int16 = signed short;
+using int32 = signed int;
+using int64 = signed long long;
+
+using uint8 = unsigned char;
+using uint16 = unsigned short;
+using uint32 = unsigned int;
+using uint64 = unsigned long long;
+#endif
 
 namespace tc {
 	namespace schema {
@@ -52,13 +66,13 @@ namespace tc {
 			enum member_type {
 				MT_bool,
 				MT_char,
+				MT_int16,
+				MT_int32,
+				MT_int64,
 				MT_uint8,
 				MT_uint16,
 				MT_uint32,
 				MT_uint64,
-				MT_int16,
-				MT_int32,
-				MT_int64,
 				MT_float,
 				MT_double,
 				MT_string,
@@ -78,28 +92,28 @@ namespace tc {
 			struct member_type_trait<bool> : public member_type_value_trait<MT_bool> {};
 
 			template<>
-			struct member_type_trait<unsigned char> : public member_type_value_trait<MT_uint8> {};
+			struct member_type_trait<uint8> : public member_type_value_trait<MT_uint8> {};
 
 			template<>
-			struct member_type_trait<unsigned short> : public member_type_value_trait<MT_uint16> {};
+			struct member_type_trait<uint16> : public member_type_value_trait<MT_uint16> {};
 
 			template<>
-			struct member_type_trait<unsigned int> : public member_type_value_trait<MT_uint32> {};
+			struct member_type_trait<uint32> : public member_type_value_trait<MT_uint32> {};
 			
 			template<>
-			struct member_type_trait<unsigned long long> : public member_type_value_trait<MT_uint64> {};
+			struct member_type_trait<uint64> : public member_type_value_trait<MT_uint64> {};
 
 			template<>
-			struct member_type_trait<signed char> : public member_type_value_trait<MT_char> {};
+			struct member_type_trait<char> : public member_type_value_trait<MT_char> {};
 
 			template<>
-			struct member_type_trait<signed short> : public member_type_value_trait<MT_int16> {};
+			struct member_type_trait<int16> : public member_type_value_trait<MT_int16> {};
 
 			template<>
-			struct member_type_trait<signed int> : public member_type_value_trait<MT_int32> {};
+			struct member_type_trait<int32> : public member_type_value_trait<MT_int32> {};
 			
 			template<>
-			struct member_type_trait<signed long long> : public member_type_value_trait<MT_int64> {};
+			struct member_type_trait<int64> : public member_type_value_trait<MT_int64> {};
 			
 			template<>
 			struct member_type_trait<float> : public member_type_value_trait<MT_float> {};
@@ -130,15 +144,6 @@ namespace tc {
 
 			template<typename Outer, typename ObjType>
 			struct member;
-
-			template<typename Outer, typename ObjType>
-			struct member_enum {
-				using to_string_t = std::string(*)(ObjType&, Outer&, member<Outer, ObjType>&);
-				using to_enum_t = void(*)(ObjType&, Outer&, member<Outer, ObjType>&, const std::string&);
-
-				to_string_t to_string;
-				to_enum_t to_enum;
-			};
 
 			/**
 			 * @brief member is a generic wrapper for a member property of Outer.
@@ -182,7 +187,18 @@ namespace tc {
 				template<typename Value>
 				void set_value(ObjType &obj, context_stack& stack, int stack_pos, Outer& outer, id_type member_idx, std::string_view name, const Value& value);
 
-				std::tuple<Setter<bool>, Setter<char>, Setter<int>, Setter<std::string>> setters;
+				std::tuple<Setter<bool>,
+					Setter<char>,
+					Setter<int16>,
+					Setter<int32>,
+					Setter<int64>,
+					Setter<uint8>,
+					Setter<uint16>,
+					Setter<uint32>,
+					Setter<uint64>,
+					Setter<float>,
+					Setter<double>,
+					Setter<std::string>> setters;
 				
 				push_back_t push_back;
 
@@ -195,10 +211,42 @@ namespace tc {
 				static void push_back_impl(context_stack& stack, int stack_pos, std::string_view name);
 			};
 
+			template<typename T>
+			struct PrimitiveType {
+				using type = T;
+			};
+
+			using PrimitiveTypeVariant = std::variant<
+					PrimitiveType<bool>,
+					PrimitiveType<char>,
+					PrimitiveType<int16>,
+					PrimitiveType<int32>,
+					PrimitiveType<int64>,
+					PrimitiveType<uint8>,
+					PrimitiveType<uint16>,
+					PrimitiveType<uint32>,
+					PrimitiveType<uint64>,
+					PrimitiveType<float>,
+					PrimitiveType<double>,
+					PrimitiveType<std::string>>;
+
 			template<typename Outer, typename ObjType>
 			struct member_primitive {
 				template<typename SetType>
-				using Setter = void (*)(ObjType &obj, member_context& ctx, Outer &outer, id_type member_idx, const SetType&);
+				using PrimitiveSetter = void (*)(ObjType &obj, member_context& ctx, Outer &outer, id_type member_idx, const SetType&);
+				using PrimitiveSetterVariant = std::variant<
+					PrimitiveSetter<bool>,
+					PrimitiveSetter<char>,
+					PrimitiveSetter<int16>,
+					PrimitiveSetter<int32>,
+					PrimitiveSetter<int64>,
+					PrimitiveSetter<uint8>,
+					PrimitiveSetter<uint16>,
+					PrimitiveSetter<uint32>,
+					PrimitiveSetter<uint64>,
+					PrimitiveSetter<float>,
+					PrimitiveSetter<double>,
+					PrimitiveSetter<std::string>>;
 
 				template<typename Y>
 				member_primitive(ObjType &obj, member_ptr<Outer, Y> mem);
@@ -206,7 +254,8 @@ namespace tc {
 				template<typename Value>
 				void set_value(ObjType &obj, member_context& ctx, Outer &outer, id_type member_idx, const Value &value);
 				
-				std::variant<Setter<bool>, Setter<char>, Setter<int>, Setter<std::string>> setter;
+				PrimitiveSetterVariant setter;
+				PrimitiveTypeVariant setter_type;
 
 				template<typename Prop, typename Value>
 				static void set_impl(ObjType &obj, member_context& ctx, Outer &outer, member<Outer, ObjType>& mem, const Value &value);
@@ -238,11 +287,8 @@ namespace tc {
 			template<typename X>
 			inline static std::vector<schema::range<X>> ranges{};
 
-			static void set_bool(context_stack &stack, Type &obj, std::string_view name, bool value);
-			
-			static void set_char(context_stack &stack, Type &obj, std::string_view name, char value);
-			
-			static void set_int(context_stack& stack, Type &obj, std::string_view name, int value);
+			template<typename Value>
+			void set_value(context_stack &stack, Type &obj, std::string_view name, const Value& value);
 			
 			template<typename Enum>
 			static void set_enum(context_stack& stack, Type &obj, std::string_view name, Enum value);
