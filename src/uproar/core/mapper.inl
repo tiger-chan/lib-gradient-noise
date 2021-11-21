@@ -1,4 +1,4 @@
-#include "definition.hpp"
+#include "schema_object.hpp"
 #include "mapper.hpp"
 
 namespace tc {
@@ -11,7 +11,7 @@ namespace tc {
 #define SET_VTABLE(NAME, TYPE) \
 	interface.vtable.NAME = [](context_stack &stack, void *data, std::string_view name, const TYPE &value) { \
 		T *obj = static_cast<T *>(data); \
-		object<T> &root = object<T>::instance; \
+		detail::object<T> &root = detail::object<T>::instance; \
 		root.set_value<TYPE>(stack, *obj, name, value); \
 	};
 
@@ -42,12 +42,12 @@ namespace tc {
 					// Starting case where the outer object is unnamed.
 					return;
 				}
-				object<T> &root = object<T>::instance;
+				detail::object<T> &root = detail::object<T>::instance;
 				root.push_back(stack, name);
 			};
 
 			interface.vtable.end_object = [](context_stack &stack) {
-				object<T> &root = object<T>::instance;
+				detail::object<T> &root = detail::object<T>::instance;
 				if (stack.empty()) {
 					return;
 				}
@@ -55,12 +55,12 @@ namespace tc {
 			};
 
 			interface.vtable.begin_array = [](context_stack &stack, std::string_view name) {
-				object<T> &root = object<T>::instance;
+				detail::object<T> &root = detail::object<T>::instance;
 				root.push_back(stack, name);
 			};
 
 			interface.vtable.end_array = [](context_stack &stack) {
-				object<T> &root = object<T>::instance;
+				detail::object<T> &root = detail::object<T>::instance;
 				if (stack.empty()) {
 					return;
 				}
