@@ -50,6 +50,9 @@ namespace tc {
 				end_object_t end_object;
 				begin_object_t begin_array;
 				end_object_t end_array;
+
+				using begin_array_element_t = void(*)(context_stack &, int32 idx);
+				begin_array_element_t begin_array_element;
 			};
 		}
 
@@ -62,6 +65,8 @@ namespace tc {
 			void begin_object(std::string_view name);
 			void end_object();
 			void begin_array(std::string_view name);
+			void begin_array_element(int32 i);
+			void end_array_element();
 			void end_array();
 			void begin_map(std::string_view name);
 			void end_map();

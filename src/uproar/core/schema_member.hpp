@@ -27,7 +27,7 @@ namespace tc {
 				member_type type{};
 
 				id_type ptr{ null };
-				id_type sub_obj{ null };
+				id_type child{ null };
 				id_type primitive{ null };
 				id_type default_value{ null };
 				id_type range{ null };

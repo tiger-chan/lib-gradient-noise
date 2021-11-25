@@ -673,8 +673,11 @@ namespace tc {
 			interface.begin_array(name);
 			++cursor;
 
+			int32 i = 0;
 			while (cursor < tend && cursor->kind != json_grammer::JG_end_array) {
+				interface.begin_array_element(i++);
 				parse_value(interface, cursor, tend, name);
+				interface.end_array_element();
 
 				if (cursor < tend) {
 					if (cursor->kind == json_grammer::JG_value_separator) {

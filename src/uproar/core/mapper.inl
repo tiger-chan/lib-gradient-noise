@@ -8,30 +8,23 @@ namespace tc {
 			parser_interface interface{};
 			interface.data = &obj;
 
-#define SET_VTABLE(NAME, TYPE) \
-	interface.vtable.NAME = [](context_stack &stack, void *data, std::string_view name, const TYPE &value) { \
-		T *obj = static_cast<T *>(data); \
-		detail::object<T> &root = detail::object<T>::instance; \
-		root.set_value<TYPE>(stack, *obj, name, value); \
-	};
-
-			SET_VTABLE(set_bool, bool);
-			SET_VTABLE(set_char, char);
-			SET_VTABLE(set_int16, int16);
-			SET_VTABLE(set_int32, int32);
-			SET_VTABLE(set_int64, int64);
-
-			SET_VTABLE(set_uint8, uint8);
-			SET_VTABLE(set_uint16, uint16);
-			SET_VTABLE(set_uint32, uint32);
-			SET_VTABLE(set_uint64, uint64);
-
-			SET_VTABLE(set_float, float);
-			SET_VTABLE(set_double, double);
-
-			SET_VTABLE(set_string, std::string);
-
-#undef SET_VTABLE
+			auto setter = [](context_stack &stack, void *data, std::string_view name, const auto &value) {
+				T *obj = static_cast<T *>(data);
+				detail::object<T> &root = detail::object<T>::instance;
+				root.set_value<decltype(value)>(stack, *obj, name, value);
+			};
+			interface.vtable.set_bool = setter;
+			interface.vtable.set_char = setter;
+			interface.vtable.set_int16 = setter;
+			interface.vtable.set_int32 = setter;
+			interface.vtable.set_int64 = setter;
+			interface.vtable.set_uint8 = setter;
+			interface.vtable.set_uint16 = setter;
+			interface.vtable.set_uint32 = setter;
+			interface.vtable.set_uint64 = setter;
+			interface.vtable.set_float = setter;
+			interface.vtable.set_double = setter;
+			interface.vtable.set_string = setter;
 
 			interface.vtable.set_null = [](context_stack &stack, void *data, std::string_view name) {
 				// Not sure if there is a specific action to be taken here.
@@ -57,6 +50,11 @@ namespace tc {
 			interface.vtable.begin_array = [](context_stack &stack, std::string_view name) {
 				detail::object<T> &root = detail::object<T>::instance;
 				root.push_back(stack, name);
+			};
+			
+			interface.vtable.begin_array_element = [](context_stack &stack, int32 idx) {
+				detail::object<T> &root = detail::object<T>::instance;
+				root.push_back(stack, std::to_string(idx));
 			};
 
 			interface.vtable.end_array = [](context_stack &stack) {
@@ -102,6 +100,14 @@ namespace tc {
 
 		void parser_interface::begin_array(std::string_view name) {
 			vtable.begin_array(stack, name);
+		}
+
+		void parser_interface::begin_array_element(int32 i) {
+			vtable.begin_array_element(stack, i);
+		}
+
+		void parser_interface::end_array_element() {
+			stack.pop_back();
 		}
 
 		void parser_interface::end_array() {

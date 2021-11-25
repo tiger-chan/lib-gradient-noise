@@ -11,9 +11,13 @@ namespace tc {
 		};
 
 		struct context {
+			union Id {
+				uint32 idx;
+				std::string_view name;
+			};
 			id_type object;
 			member_type type;
-			std::string_view name;
+			Id id{ 0 };
 			std::vector<member_context> member_context;
 		};
 

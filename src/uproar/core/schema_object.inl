@@ -34,11 +34,11 @@ namespace tc {
 					std::string converted{ enum_to_string<Prop>::to_string(value) };
 					set_value<Prop, std::string>(stack, stack_pos, obj, name, converted);
 				}
-				else {
+				else if constexpr (member_type_trait_v<Type> >= MT_object) {
 					if (stack_pos < stack.size()) {
 						auto &ctx = stack[stack_pos];
 						auto &prop = instance.props[ctx.object];
-						obj_forward &sub = instance.sub_objects[prop.sub_obj];
+						obj_forward &sub = instance.children[prop.child];
 						sub.set_value<Value>(instance, stack, stack_pos + 1, obj, ctx.object, name, value);
 						return;
 					}
@@ -48,20 +48,20 @@ namespace tc {
 						return;
 					}
 
-					member_context tmp{};
-					member_context *mem_ctx{ nullptr };
+					context tmp{};
+					context *tmp_ctx{ nullptr };
 					id_type prop_idx = iter->second;
 					if (stack.empty()) {
-						mem_ctx = &tmp;
+						tmp.member_context.resize(instance.prop_lookup.size());
+						tmp_ctx = &tmp;
 					}
 					else if (stack_pos == stack.size()) {
-						auto &ctx = stack[stack_pos - 1];
-						mem_ctx = &ctx.member_context[prop_idx];
+						tmp_ctx = &stack[stack_pos - 1];
 					}
 
 					obj_member &prop = instance.props[prop_idx];
 					obj_primitive &primitive = instance.primitives[prop.primitive];
-					primitive.set_value(instance, *mem_ctx, obj, prop_idx, value);
+					primitive.set_value(instance, *tmp_ctx, obj, prop_idx, value);
 				}
 			}
 
@@ -76,13 +76,13 @@ namespace tc {
 					context &ctx = stack.emplace_back();
 					ctx.object = iter->second;
 					ctx.type = instance.props[iter->second].type;
-					ctx.name = instance.props[iter->second].name;
+					ctx.id.name = instance.props[iter->second].name;
 					ctx.member_context.resize(instance.props.size());
 				}
 				else if (stack_pos < stack.size()) {
 					auto &ctx = stack[stack_pos];
 					auto &prop = instance.props[ctx.object];
-					obj_forward &sub = instance.sub_objects[prop.sub_obj];
+					obj_forward &sub = instance.children[prop.child];
 					sub.push_back(stack, stack_pos + 1, name);
 				}
 			}

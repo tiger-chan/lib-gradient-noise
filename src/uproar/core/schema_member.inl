@@ -14,8 +14,15 @@ namespace tc {
 				obj.prop_ptrs<Y>.emplace_back(mem);
 
 				if constexpr (member_type_trait_v<Y> == MT_object) {
-					sub_obj = id_type(obj.sub_objects.size());
-					obj.sub_objects.emplace_back(obj, mem);
+					child = id_type(obj.children.size());
+					obj.children.emplace_back(obj, mem);
+				}
+				else if constexpr (member_type_trait_v<Y> == MT_array) {
+					child = id_type(obj.children.size());
+					obj.children.emplace_back(obj, mem);
+
+					primitive = id_type(obj.primitives.size());
+					obj.primitives.emplace_back(obj, mem);
 				}
 				else {
 					primitive = id_type(obj.primitives.size());

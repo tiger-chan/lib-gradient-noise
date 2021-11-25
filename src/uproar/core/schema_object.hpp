@@ -50,7 +50,7 @@ namespace tc {
 				static object<Type> instance;
 
 				std::vector<obj_member> props;
-				std::vector<obj_forward> sub_objects;
+				std::vector<obj_forward> children;
 				std::vector<obj_primitive> primitives;
 				std::unordered_map<std::string_view, id_type> prop_lookup;
 				template<typename Return>
