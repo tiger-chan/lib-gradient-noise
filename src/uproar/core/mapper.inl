@@ -49,12 +49,16 @@ namespace tc {
 
 			interface.vtable.begin_array = [](context_stack &stack, std::string_view name) {
 				detail::object<T> &root = detail::object<T>::instance;
+				if (name.empty()) {
+					// Starting case where the outer object is unnamed.
+					return;
+				}
 				root.push_back(stack, name);
 			};
 			
 			interface.vtable.begin_array_element = [](context_stack &stack, int32 idx) {
 				detail::object<T> &root = detail::object<T>::instance;
-				root.push_back(stack, std::to_string(idx));
+				root.push_back(stack, idx);
 			};
 
 			interface.vtable.end_array = [](context_stack &stack) {
@@ -107,6 +111,9 @@ namespace tc {
 		}
 
 		void parser_interface::end_array_element() {
+			if (stack.empty()) {
+				return;
+			}
 			stack.pop_back();
 		}
 

@@ -17,6 +17,9 @@ namespace tc {
 			template<typename Outer, typename ObjType>
 			struct member {
 				template<typename Y, typename... Z, template<class> typename... Constraint>
+				member(ObjType &obj, std::string_view name, member_object_type<Y> mem, std::string_view desc, Constraint<Z> &&...details);
+				
+				template<typename Y, typename... Z, template<class> typename... Constraint>
 				member(ObjType &obj, std::string_view name, member_ptr<Outer, Y> mem, std::string_view desc, Constraint<Z> &&...details);
 
 				template<typename Y, template<typename> typename Constraint>

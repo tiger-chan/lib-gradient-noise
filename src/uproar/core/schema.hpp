@@ -9,6 +9,14 @@
 namespace tc {
 	namespace schema {
 		namespace detail {
+			template<typename T>
+			struct member_object_type {
+				using type = T;
+			};
+
+			template<typename T>
+			static const constexpr member_object_type<T> member_object_type_v{};
+			
 			template<typename Outer, typename ObjType>
 			struct member;
 			

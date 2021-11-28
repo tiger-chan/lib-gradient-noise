@@ -33,6 +33,9 @@ namespace tc {
 
 		template<>
 		struct is_container<std::string> : std::false_type {};
+		
+		template<typename T>
+		struct is_container<std::vector<T>> : std::true_type {};
 
 		template<typename Type>
 		static constexpr bool is_container_v = is_container<Type>::value;
@@ -40,6 +43,7 @@ namespace tc {
 		template<typename Type>
 		struct is_map : std::false_type {
 		};
+		
 		template<typename Type>
 		static constexpr bool is_map_v = is_map<Type>::value;
 

@@ -8,24 +8,19 @@
 namespace tc {
 	namespace schema {
 		namespace detail {
-			template<typename T>
-			struct PrimitiveType {
-				using type = T;
-			};
-
 			using PrimitiveTypeVariant = std::variant<
-				PrimitiveType<bool>,
-				PrimitiveType<char>,
-				PrimitiveType<int16>,
-				PrimitiveType<int32>,
-				PrimitiveType<int64>,
-				PrimitiveType<uint8>,
-				PrimitiveType<uint16>,
-				PrimitiveType<uint32>,
-				PrimitiveType<uint64>,
-				PrimitiveType<float>,
-				PrimitiveType<double>,
-				PrimitiveType<std::string>>;
+				member_object_type<bool>,
+				member_object_type<char>,
+				member_object_type<int16>,
+				member_object_type<int32>,
+				member_object_type<int64>,
+				member_object_type<uint8>,
+				member_object_type<uint16>,
+				member_object_type<uint32>,
+				member_object_type<uint64>,
+				member_object_type<float>,
+				member_object_type<double>,
+				member_object_type<std::string>>;
 
 			template<typename Outer, typename ObjType, typename SetType>
 			using PrimitiveSetter = void (*)(ObjType &, context &, Outer &, id_type, const SetType &);
@@ -60,6 +55,9 @@ namespace tc {
 
 			template<typename Outer, typename ObjType>
 			struct member_primitive {
+				template<typename Y>
+				member_primitive(ObjType &obj, member_object_type<Y>);
+
 				template<typename Y>
 				member_primitive(ObjType &obj, member_ptr<Outer, Y> mem);
 

@@ -39,6 +39,8 @@ namespace tc {
 			MT_enum,
 			MT_object = 100,
 			MT_array,
+
+			MT_unknown = INT32_MAX,
 		};
 	}    // namespace schema
 }    // namespace tc

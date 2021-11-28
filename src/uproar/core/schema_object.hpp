@@ -15,6 +15,7 @@ namespace tc {
 		namespace detail {
 			template<typename Type>
 			struct object {
+			public:
 				using obj_member = detail::member<Type, object<Type>>;
 				using obj_forward = detail::member_object<Type, object<Type>>;
 				using obj_primitive = detail::member_primitive<Type, object<Type>>;
@@ -33,6 +34,8 @@ namespace tc {
 
 				void push_back(context_stack &stack, int stack_pos, std::string_view name);
 				void push_back(context_stack &stack, std::string_view name);
+				void push_back(context_stack &stack, int stack_pos, int32 array_idx);
+				void push_back(context_stack &stack, int32 array_idx);
 				context pop_back(context_stack &stack);
 
 				/**
@@ -48,6 +51,7 @@ namespace tc {
 				void set_value(member_context &member_ctx, obj_member &member, Type &obj, const Value &value);
 
 				static object<Type> instance;
+				static constexpr member_type type = member_type_trait_v<Type>;
 
 				std::vector<obj_member> props;
 				std::vector<obj_forward> children;

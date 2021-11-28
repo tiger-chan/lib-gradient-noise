@@ -3,6 +3,37 @@
 namespace tc {
 	namespace schema {
 		namespace detail {
+			template<typename T>
+			struct instance_type_helper {
+				using type = T;
+			};
+			template<typename Type, typename = std::enable_if_t<member_type_trait_v<Type> == MT_object>>
+			static object<Type> create_instance(instance_type_helper<Type>) {
+				return object<Type>{};
+			}
+
+			template<template<class...> typename Container, typename Type, typename... Rest, typename = std::enable_if_t<member_type_trait_v<Container<Type, Rest...>> == MT_array>>
+			static object<Container<Type, Rest...>> create_instance(instance_type_helper<Container<Type, Rest...>>) {
+				using Outer = Container<Type, Rest...>;
+				object<Outer> instance{};
+				member<Outer, object<Outer>> self(instance, "this", member_object_type_v<Container<Type, Rest...>>, "pointer to this object");
+				instance.props.emplace_back(std::move(self));
+
+				if constexpr (member_type_trait_v<Type> >= MT_object) {
+					member<Outer, object<Outer>> helper(instance, "child_type", member_object_type_v<Type>, "Member helper for the child type");
+					instance.props.emplace_back(std::move(helper));
+				}
+
+				return instance;
+			}
+
+			// template<typename Type, template<class...> typename Container, typename... Rest, typename = std::enable_if_t<member_type_trait_v<Container<Type, Rest...>> == MT_map>>
+			// static object<Container<Type, Rest...>> create_instance(instance_type_helper<Container<Type, Rest...>> t) {
+			// 	object<Container<Type, Rest...>> instance{};
+
+			// 	return instance;
+			// }
+
 			template<typename Type>
 			template<typename Y, typename... Z, template<class> typename... Constraint>
 			void object<Type>::add_member(const char *name, member_ptr<Type, Y> mem_ptr, const char *desc, Constraint<Z> &&...constraints) {
@@ -19,7 +50,7 @@ namespace tc {
 			}
 
 			template<typename X>
-			object<X> object<X>::instance{};
+			object<X> object<X>::instance{ create_instance(instance_type_helper<X>{}) };
 
 			template<typename Type>
 			template<typename Value>
@@ -34,7 +65,7 @@ namespace tc {
 					std::string converted{ enum_to_string<Prop>::to_string(value) };
 					set_value<Prop, std::string>(stack, stack_pos, obj, name, converted);
 				}
-				else if constexpr (member_type_trait_v<Type> >= MT_object) {
+				else if constexpr (member_type_trait_v<Type> == MT_object) {
 					if (stack_pos < stack.size()) {
 						auto &ctx = stack[stack_pos];
 						auto &prop = instance.props[ctx.object];
@@ -63,6 +94,15 @@ namespace tc {
 					obj_primitive &primitive = instance.primitives[prop.primitive];
 					primitive.set_value(instance, *tmp_ctx, obj, prop_idx, value);
 				}
+				else if constexpr (member_type_trait_v<Type> == MT_array) {
+					if (stack_pos < stack.size()) {
+						auto &ctx = stack[stack_pos];
+						auto &prop = instance.props[ctx.object];
+						obj_forward &sub = instance.children[prop.child];
+						//sub.set_value<Value>(instance, stack, stack_pos, obj, ctx.object, name, value);
+						sub.set_value<Value>(instance, stack, stack_pos, obj, name, value);
+					}
+				}
 			}
 
 			template<typename Type>
@@ -90,6 +130,28 @@ namespace tc {
 			template<typename Type>
 			void object<Type>::push_back(context_stack &stack, std::string_view name) {
 				push_back(stack, 0, name);
+			}
+
+			template<typename Type>
+			void object<Type>::push_back(context_stack &stack, int stack_pos, int32 array_idx) {
+				if (stack_pos == stack.size()) {
+					if constexpr (member_type_trait_v<Type> == MT_array) {
+						auto &prop = instance.props[0];
+						obj_forward &sub = instance.children[0];
+						sub.push_back(stack, stack_pos, array_idx);
+					}
+				}
+				else if (stack_pos < stack.size()) {
+					auto &ctx = stack[stack_pos];
+					auto &prop = instance.props[ctx.object];
+					obj_forward &sub = instance.children[prop.child];
+					sub.push_back(stack, stack_pos + 1, array_idx);
+				}
+			}
+
+			template<typename Type>
+			void object<Type>::push_back(context_stack &stack, int32 array_idx) {
+				push_back(stack, 0, array_idx);
 			}
 
 			template<typename Type>
