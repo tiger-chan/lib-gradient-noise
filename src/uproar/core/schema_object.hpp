@@ -27,10 +27,7 @@ namespace tc {
 				void add_member(const char *name, member_ptr<Type, Y> mem_ptr, const char *desc, Constraint<Z> &&...constraints);
 
 				template<typename Value>
-				void set_value(context_stack &stack, Type &obj, std::string_view name, const Value &value);
-
-				template<typename Prop, typename Value>
-				void set_value(context_stack &stack, int stack_pos, Type &obj, std::string_view name, const Value &value);
+				void set_value(context_stack &stack, Type &obj, const Value &value);
 
 				void push_back(context_stack &stack, int stack_pos, std::string_view name);
 				void push_back(context_stack &stack, std::string_view name);

@@ -3,20 +3,53 @@
 namespace tc {
 	namespace schema {
 		namespace detail {
+			constexpr std::string_view pretty_name(std::string_view name) {
+				for (std::size_t i = name.size(); i > 0; --i) {
+					auto v = name[i - 1];
+					if (!((v >= '0' && v <= '9') ||
+						(v >= 'a' && v <= 'z') ||
+						(v >= 'A' && v <= 'Z') ||
+						(v == '_') || (v == ':'))) {
+					name.remove_prefix(i);
+					break;
+					}
+				}
+
+				return name;
+			}
+
+			template<typename Class>
+			constexpr auto n() {
+#if defined(__clang__) || defined(__GNUC__)
+				auto view = std::string_view{ __PRETTY_FUNCTION__, sizeof(__PRETTY_FUNCTION__) };
+				view.remove_suffix(2);
+#elif defined(_MSC_VER)
+				auto view = std::string_view{__FUNCSIG__, sizeof(__FUNCSIG__) };
+				view.remove_suffix(8);
+#else
+				auto view = std::string_view{};
+#endif
+				return pretty_name(view);
+			}
+
 			template<typename T>
 			struct instance_type_helper {
 				using type = T;
 			};
+
 			template<typename Type, typename = std::enable_if_t<member_type_trait_v<Type> == MT_object>>
 			static object<Type> create_instance(instance_type_helper<Type>) {
-				return object<Type>{};
+				object<Type> instance{};
+				member<Type, object<Type>> self(instance, "this", member_object_type_v<Type>, n<Type>());
+				instance.props.emplace_back(std::move(self));
+				return instance;
 			}
 
 			template<template<class...> typename Container, typename Type, typename... Rest, typename = std::enable_if_t<member_type_trait_v<Container<Type, Rest...>> == MT_array>>
 			static object<Container<Type, Rest...>> create_instance(instance_type_helper<Container<Type, Rest...>>) {
 				using Outer = Container<Type, Rest...>;
 				object<Outer> instance{};
-				member<Outer, object<Outer>> self(instance, "this", member_object_type_v<Container<Type, Rest...>>, "pointer to this object");
+				member<Outer, object<Outer>> self(instance, "this", member_object_type_v<Container<Type>>, n<Outer>());
 				instance.props.emplace_back(std::move(self));
 
 				if constexpr (member_type_trait_v<Type> >= MT_object) {
@@ -54,53 +87,26 @@ namespace tc {
 
 			template<typename Type>
 			template<typename Value>
-			void object<Type>::set_value(context_stack &stack, Type &obj, std::string_view name, const Value &value) {
-				set_value<Value>(stack, 0, obj, name, value);
-			}
-
-			template<typename Type>
-			template<typename Prop, typename Value>
-			void object<Type>::set_value(context_stack &stack, int stack_pos, Type &obj, std::string_view name, const Value &value) {
-				if constexpr (std::is_enum_v<Prop> && std::is_enum_v<Value>) {
-					std::string converted{ enum_to_string<Prop>::to_string(value) };
-					set_value<Prop, std::string>(stack, stack_pos, obj, name, converted);
+			void object<Type>::set_value(context_stack &stack, Type &obj, const Value &value) {
+				if constexpr (std::is_enum_v<Value>) {
+					std::string converted{ enum_to_string<Value>::to_string(value) };
+					set_value<std::string>(stack, stack_pos, obj, converted);
 				}
-				else if constexpr (member_type_trait_v<Type> == MT_object) {
-					if (stack_pos < stack.size()) {
-						auto &ctx = stack[stack_pos];
-						auto &prop = instance.props[ctx.object];
-						obj_forward &sub = instance.children[prop.child];
-						sub.set_value<Value>(instance, stack, stack_pos + 1, obj, ctx.object, name, value);
-						return;
-					}
+				else {
+					context &ctx{ stack[0] };
+					if constexpr (member_type_trait_v<Type> >= MT_object) {
+						if (stack.size() == 1) {
+							// this is a as deep as we need to go.
+							obj_member &prop = instance.props[ctx.object];
+							obj_primitive &prim = instance.primitives[prop.primitive];
+							prim.set_value(*this, ctx, obj, ctx.object, value);
 
-					auto iter = instance.prop_lookup.find(name);
-					if (iter == std::end(instance.prop_lookup)) {
-						return;
-					}
-
-					context tmp{};
-					context *tmp_ctx{ nullptr };
-					id_type prop_idx = iter->second;
-					if (stack.empty()) {
-						tmp.member_context.resize(instance.prop_lookup.size());
-						tmp_ctx = &tmp;
-					}
-					else if (stack_pos == stack.size()) {
-						tmp_ctx = &stack[stack_pos - 1];
-					}
-
-					obj_member &prop = instance.props[prop_idx];
-					obj_primitive &primitive = instance.primitives[prop.primitive];
-					primitive.set_value(instance, *tmp_ctx, obj, prop_idx, value);
-				}
-				else if constexpr (member_type_trait_v<Type> == MT_array) {
-					if (stack_pos < stack.size()) {
-						auto &ctx = stack[stack_pos];
-						auto &prop = instance.props[ctx.object];
-						obj_forward &sub = instance.children[prop.child];
-						//sub.set_value<Value>(instance, stack, stack_pos, obj, ctx.object, name, value);
-						sub.set_value<Value>(instance, stack, stack_pos, obj, name, value);
+						}
+						else {
+							obj_member &prop = instance.props[ctx.object];
+							obj_forward &sub = instance.children[prop.child];
+							sub.set_value(*this, stack, 0, obj, value);
+						}
 					}
 				}
 			}
@@ -123,7 +129,7 @@ namespace tc {
 					auto &ctx = stack[stack_pos];
 					auto &prop = instance.props[ctx.object];
 					obj_forward &sub = instance.children[prop.child];
-					sub.push_back(stack, stack_pos + 1, name);
+					sub.push_back(stack, stack_pos, name);
 				}
 			}
 
@@ -137,7 +143,7 @@ namespace tc {
 				if (stack_pos == stack.size()) {
 					if constexpr (member_type_trait_v<Type> == MT_array) {
 						auto &prop = instance.props[0];
-						obj_forward &sub = instance.children[0];
+						obj_forward &sub = instance.children[prop.child];
 						sub.push_back(stack, stack_pos, array_idx);
 					}
 				}
@@ -145,7 +151,7 @@ namespace tc {
 					auto &ctx = stack[stack_pos];
 					auto &prop = instance.props[ctx.object];
 					obj_forward &sub = instance.children[prop.child];
-					sub.push_back(stack, stack_pos + 1, array_idx);
+					sub.push_back(stack, stack_pos, array_idx);
 				}
 			}
 
@@ -158,36 +164,6 @@ namespace tc {
 			context object<Type>::pop_back(context_stack &stack) {
 				// TODO: Validation should occur here?
 				return stack.pop_back();
-			}
-
-			template<typename Type>
-			template<typename Prop, typename Value>
-			void object<Type>::set_value(member_context &member_ctx, obj_member &member, Type &obj, const Value &value) {
-				member_ctx.is_in_range = true;
-				if (member.range != schema::null) {
-					if constexpr (std::is_enum_v<Prop>) {
-						Prop prop = enum_to_string<Prop>::to_enum(value);
-						member_ctx.is_in_range = detail::check_constraint(instance.ranges<Prop>[member.range], member, prop);
-					}
-					else {
-						member_ctx.is_in_range = detail::check_constraint(instance.ranges<Prop>[member.range], member, value);
-					}
-				}
-
-				// TODO: Reporting errors could be done here or a context object could be passed to each parse related function to validate
-				// And report as a whole?
-				// if (!in_range) {
-				// 	// report errors
-				// }
-
-				auto ptr = instance.prop_ptrs<Prop>[member.ptr];
-				if constexpr (std::is_enum_v<Prop>) {
-					obj.*ptr = enum_to_string<Prop>::to_enum(value);
-				}
-				else if (member_type_trait_v<Prop> != MT_object) {
-					obj.*ptr = static_cast<Prop>(value);
-				}
-				member_ctx.dirty = true;
 			}
 		}    // namespace detail
 	}    // namespace schema

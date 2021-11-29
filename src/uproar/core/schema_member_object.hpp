@@ -13,7 +13,7 @@ namespace tc {
 				template<typename T>
 				using push_back_t = void (*)(context_stack &, int, T);
 				template<typename SetType>
-				using Setter = void (*)(ObjType &, context_stack &, int, Outer &, std::string_view, const SetType &);
+				using Setter = void (*)(ObjType &, context_stack &, int, Outer &, const SetType &);
 
 				Setter<bool> set_bool;
 				Setter<char> set_char;
@@ -28,11 +28,11 @@ namespace tc {
 				Setter<double> set_double;
 				Setter<std::string> set_string;
 
-				push_back_t<std::string_view> push_back;
-				push_back_t<int32> push_back_array;
+				push_back_t<const std::string_view &> push_back;
+				push_back_t<const int32&> push_back_array;
 
 				template<typename X>
-				void set_value(ObjType &, context_stack &, int, Outer &, std::string_view, const X &);
+				void set_value(ObjType &, context_stack &, int, Outer &, const X &);
 			};
 			
 			template<typename Outer, typename ObjType>
@@ -42,10 +42,10 @@ namespace tc {
 				member_object(ObjType &obj, member_object_type<Y> mem);
 
 
-				void push_back(context_stack &, int32, std::string_view);
+				void push_back(context_stack &, int32, const std::string_view &);
 				void push_back(context_stack &, int32, int32);
 				template<typename Value>
-				void set_value(ObjType &obj, context_stack &stack, int stack_pos, Outer &outer, std::string_view name, const Value &value);
+				void set_value(ObjType &obj, context_stack &stack, int stack_pos, Outer &outer, const Value &value);
 
 			private:
 				member_object_vtable<Outer, ObjType> vtable;

@@ -9,10 +9,17 @@ namespace tc {
 			interface.data = &obj;
 
 			auto setter = [](context_stack &stack, void *data, std::string_view name, const auto &value) {
-				T *obj = static_cast<T *>(data);
 				detail::object<T> &root = detail::object<T>::instance;
-				root.set_value<decltype(value)>(stack, *obj, name, value);
+				if (!name.empty()) {
+					root.push_back(stack, name);
+				}
+				T *obj = static_cast<T *>(data);
+				root.set_value<decltype(value)>(stack, *obj, value);
+				if (!name.empty() && !stack.empty()) {
+					root.pop_back(stack);
+				}
 			};
+
 			interface.vtable.set_bool = setter;
 			interface.vtable.set_char = setter;
 			interface.vtable.set_int16 = setter;
@@ -39,9 +46,9 @@ namespace tc {
 				root.push_back(stack, name);
 			};
 
-			interface.vtable.end_object = [](context_stack &stack) {
+			interface.vtable.end_object = [](context_stack &stack, std::string_view name) {
 				detail::object<T> &root = detail::object<T>::instance;
-				if (stack.empty()) {
+				if (stack.empty() || name.empty()) {
 					return;
 				}
 				root.pop_back(stack);
@@ -49,10 +56,6 @@ namespace tc {
 
 			interface.vtable.begin_array = [](context_stack &stack, std::string_view name) {
 				detail::object<T> &root = detail::object<T>::instance;
-				if (name.empty()) {
-					// Starting case where the outer object is unnamed.
-					return;
-				}
 				root.push_back(stack, name);
 			};
 			
@@ -61,9 +64,9 @@ namespace tc {
 				root.push_back(stack, idx);
 			};
 
-			interface.vtable.end_array = [](context_stack &stack) {
+			interface.vtable.end_array = [](context_stack &stack, std::string_view name) {
 				detail::object<T> &root = detail::object<T>::instance;
-				if (stack.empty()) {
+				if (stack.empty() || name.empty()) {
 					return;
 				}
 				root.pop_back(stack);
@@ -98,8 +101,8 @@ namespace tc {
 			vtable.begin_object(stack, name);
 		}
 
-		void parser_interface::end_object() {
-			vtable.end_object(stack);
+		void parser_interface::end_object(std::string_view name) {
+			vtable.end_object(stack, name);
 		}
 
 		void parser_interface::begin_array(std::string_view name) {
@@ -111,14 +114,11 @@ namespace tc {
 		}
 
 		void parser_interface::end_array_element() {
-			if (stack.empty()) {
-				return;
-			}
 			stack.pop_back();
 		}
 
-		void parser_interface::end_array() {
-			vtable.end_array(stack);
+		void parser_interface::end_array(std::string_view name) {
+			vtable.end_array(stack, name);
 		}
 	}    // namespace schema
 }    // namespace tc

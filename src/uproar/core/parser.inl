@@ -665,7 +665,7 @@ namespace tc {
 				}
 			}
 
-			interface.end_object();
+			interface.end_object(name);
 			++cursor;
 		}
 
@@ -676,7 +676,7 @@ namespace tc {
 			int32 i = 0;
 			while (cursor < tend && cursor->kind != json_grammer::JG_end_array) {
 				interface.begin_array_element(i++);
-				parse_value(interface, cursor, tend, name);
+				parse_value(interface, cursor, tend, "");
 				interface.end_array_element();
 
 				if (cursor < tend) {
@@ -691,7 +691,7 @@ namespace tc {
 				}
 			}
 
-			interface.end_array();
+			interface.end_array(name);
 			++cursor;
 		}
 

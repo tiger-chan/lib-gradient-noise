@@ -52,6 +52,15 @@ namespace tc {
 		template<typename Type>
 		struct object;
 
+		template<typename Type>
+		struct object_traits {
+			using object_t = object<Type>;
+			using member = detail::member<Type, object_t>;
+			using sub_object = detail::member_object<Type, object_t>;
+			using primitive = detail::member_primitive<Type, object_t>;
+			static constexpr const member_type type = member_type_trait_v<Type>;
+		};
+
 		struct member_context;
 		struct context;
 		struct context_stack;

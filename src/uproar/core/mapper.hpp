@@ -44,7 +44,7 @@ namespace tc {
 				NullSetterT set_null;
 
 				using begin_object_t = void(*)(context_stack &, std::string_view);
-				using end_object_t = void(*)(context_stack &);
+				using end_object_t = void(*)(context_stack &, std::string_view);
 				
 				begin_object_t begin_object;
 				end_object_t end_object;
@@ -63,11 +63,11 @@ namespace tc {
 			void set_null(std::string_view name);
 
 			void begin_object(std::string_view name);
-			void end_object();
+			void end_object(std::string_view name);
 			void begin_array(std::string_view name);
 			void begin_array_element(int32 i);
 			void end_array_element();
-			void end_array();
+			void end_array(std::string_view name);
 			void begin_map(std::string_view name);
 			void end_map();
 
