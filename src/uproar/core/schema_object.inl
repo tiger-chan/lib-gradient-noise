@@ -6,12 +6,9 @@ namespace tc {
 			constexpr std::string_view pretty_name(std::string_view name) {
 				for (std::size_t i = name.size(); i > 0; --i) {
 					auto v = name[i - 1];
-					if (!((v >= '0' && v <= '9') ||
-						(v >= 'a' && v <= 'z') ||
-						(v >= 'A' && v <= 'Z') ||
-						(v == '_') || (v == ':'))) {
-					name.remove_prefix(i);
-					break;
+					if (!((v >= '0' && v <= '9') || (v >= 'a' && v <= 'z') || (v >= 'A' && v <= 'Z') || (v == '_') || (v == ':'))) {
+						name.remove_prefix(i);
+						break;
 					}
 				}
 
@@ -24,7 +21,7 @@ namespace tc {
 				auto view = std::string_view{ __PRETTY_FUNCTION__, sizeof(__PRETTY_FUNCTION__) };
 				view.remove_suffix(2);
 #elif defined(_MSC_VER)
-				auto view = std::string_view{__FUNCSIG__, sizeof(__FUNCSIG__) };
+				auto view = std::string_view{ __FUNCSIG__, sizeof(__FUNCSIG__) };
 				view.remove_suffix(8);
 #else
 				auto view = std::string_view{};
@@ -60,12 +57,21 @@ namespace tc {
 				return instance;
 			}
 
-			// template<typename Type, template<class...> typename Container, typename... Rest, typename = std::enable_if_t<member_type_trait_v<Container<Type, Rest...>> == MT_map>>
-			// static object<Container<Type, Rest...>> create_instance(instance_type_helper<Container<Type, Rest...>> t) {
-			// 	object<Container<Type, Rest...>> instance{};
+			template<template<class...> typename Container, typename Key, typename Type, typename... Rest, typename = std::enable_if_t<member_type_trait_v<Container<Key, Type, Rest...>> == MT_map>>
+			static object<Container<Key, Type, Rest...>> create_instance(instance_type_helper<Container<Key, Type, Rest...>>) {
+				using Outer = Container<Key, Type, Rest...>;
+				object<Outer> instance{};
 
-			// 	return instance;
-			// }
+				member<Outer, object<Outer>> self(instance, "this", member_object_type_v<Container<Key, Type>>, n<Outer>());
+				instance.props.emplace_back(std::move(self));
+
+				if constexpr (member_type_trait_v<Type> >= MT_object) {
+					member<Outer, object<Outer>> helper(instance, "child_type", member_object_type_v<Type>, "Member helper for the child type");
+					instance.props.emplace_back(std::move(helper));
+				}
+
+				return instance;
+			}
 
 			template<typename Type>
 			template<typename Y, typename... Z, template<class> typename... Constraint>
@@ -100,7 +106,6 @@ namespace tc {
 							obj_member &prop = instance.props[ctx.object];
 							obj_primitive &prim = instance.primitives[prop.primitive];
 							prim.set_value(*this, ctx, obj, ctx.object, value);
-
 						}
 						else {
 							obj_member &prop = instance.props[ctx.object];
@@ -114,16 +119,23 @@ namespace tc {
 			template<typename Type>
 			void object<Type>::push_back(context_stack &stack, int stack_pos, std::string_view name) {
 				if (stack_pos == stack.size()) {
-					auto iter = instance.prop_lookup.find(name);
-					if (iter == std::end(instance.prop_lookup)) {
-						return;
-					}
+					if constexpr (member_type_trait_v<Type> == MT_object) {
+						auto iter = instance.prop_lookup.find(name);
+						if (iter == std::end(instance.prop_lookup)) {
+							return;
+						}
 
-					context &ctx = stack.emplace_back();
-					ctx.object = iter->second;
-					ctx.type = instance.props[iter->second].type;
-					ctx.id.name = instance.props[iter->second].name;
-					ctx.member_context.resize(instance.props.size());
+						context &ctx = stack.emplace_back();
+						ctx.object = iter->second;
+						ctx.type = instance.props[iter->second].type;
+						ctx.id.name = instance.props[iter->second].name;
+						ctx.member_context.resize(instance.props.size());
+					}
+					else if constexpr (member_type_trait_v<Type> == MT_map) {
+						auto &prop = instance.props[0];
+						obj_forward &sub = instance.children[prop.child];
+						sub.push_back(stack, stack_pos, name);
+					}
 				}
 				else if (stack_pos < stack.size()) {
 					auto &ctx = stack[stack_pos];

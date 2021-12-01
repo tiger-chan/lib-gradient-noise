@@ -3,12 +3,43 @@
 namespace tc {
 	namespace schema {
 		namespace detail {
-			template<typename Outer, typename ObjType, typename Type, template<class...> typename Container, typename ...Rest>
-			void add_primitive(ObjType &obj, member<Outer, ObjType>& mem, member_object_type<Container<Type, Rest...>>) {
-				using ContainerType = Container<Type, Rest...>;
-				if constexpr (member_type_trait_v<Type> < MT_object) {
-					mem.primitive = id_type(obj.primitives.size());
-					obj.primitives.emplace_back(obj, member_object_type<Type>{});
+			template<typename>
+			struct ConatinerMemberHelper;
+			template<template<class...> typename Container, typename Type, typename... Rest>
+			struct ConatinerMemberHelper<Container<Type, Rest...>> {
+				using Array = Container<Type, Rest...>;
+
+				template<typename Outer>
+				static void handle(object<Outer> &obj, member<Outer, object<Outer>> &mem) {
+					if constexpr (member_type_trait_v<Type> < MT_object) {
+						mem.primitive = id_type(obj.primitives.size());
+						obj.primitives.emplace_back(obj, member_object_type<Type>{});
+					}
+				}
+			};
+
+			template<typename>
+			struct MapMemberHelper;
+			template<template<class...> typename Container, typename Key, typename Type, typename... Rest>
+			struct MapMemberHelper<Container<Key, Type, Rest...>> {
+				using Map = Container<Key, Type, Rest...>;
+
+				template<typename Outer>
+				static void handle(object<Outer> &obj, member<Outer, object<Outer>> &mem) {
+					if constexpr (member_type_trait_v<Type> < MT_object) {
+						mem.primitive = id_type(obj.primitives.size());
+						obj.primitives.emplace_back(obj, member_object_type<Type>{});
+					}
+				}
+			};
+
+			template<typename Outer, typename ObjType, typename Type>
+			void add_primitive(ObjType &obj, member<Outer, ObjType> &mem, member_object_type<Type>) {
+				if constexpr (member_type_trait_v<Type> == MT_array) {
+					ConatinerMemberHelper<Type>::handle(obj, mem);
+				}
+				else if constexpr (member_type_trait_v<Type> == MT_map) {
+					MapMemberHelper<Type>::handle(obj, mem);
 				}
 			}
 
@@ -23,6 +54,11 @@ namespace tc {
 					obj.children.emplace_back(obj, member_object_type<Y>{});
 				}
 				if constexpr (member_type_trait_v<Y> == MT_array) {
+					child = id_type(obj.children.size());
+					obj.children.emplace_back(obj, member_object_type<Y>{});
+					add_primitive(obj, *this, member_object_type<Y>{});
+				}
+				else if constexpr (member_type_trait_v<Y> == MT_map) {
 					child = id_type(obj.children.size());
 					obj.children.emplace_back(obj, member_object_type<Y>{});
 					add_primitive(obj, *this, member_object_type<Y>{});
@@ -45,6 +81,10 @@ namespace tc {
 					obj.children.emplace_back(obj, member_object_type<Y>{});
 				}
 				else if constexpr (member_type_trait_v<Y> == MT_array) {
+					child = id_type(obj.children.size());
+					obj.children.emplace_back(obj, member_object_type<Y>{});
+				}
+				else if constexpr (member_type_trait_v<Y> == MT_map) {
 					child = id_type(obj.children.size());
 					obj.children.emplace_back(obj, member_object_type<Y>{});
 				}

@@ -107,8 +107,64 @@ namespace tc {
 					else {
 						vtable.type = member_object_type<Prop>{};
 					}
-					
+
 					vtable.setter = create_set_value<use_self, Prop>();
+
+					return vtable;
+				}
+			};
+
+			template<typename>
+			struct MapPrimitiveVtableHelper;
+
+			template<template<class, class, class...> typename OuterContainer, typename Key, typename Type, typename... Rest>
+			struct MapPrimitiveVtableHelper<OuterContainer<Key, Type, Rest...>> {
+				using Outer = OuterContainer<Key, Type, Rest...>;
+				static_assert(member_type_trait_v<Outer> == MT_map, "Map Primitive VTable helper should only be used with maps types");
+				using ObjOuter = object<Outer>;
+				using obj_vtable = member_primitive_vtable<Outer, ObjOuter>;
+				using obj_member = member<Outer, ObjOuter>;
+				using obj_prim = member_primitive<Outer, ObjOuter>;
+				using obj_object = member_object<Outer, ObjOuter>;
+
+				template<bool use_self, typename Prop>
+				static auto create_set_value() {
+					using obj_ptr = member_ptr<Outer, Prop>;
+
+					static auto set_member = [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const auto &value) {
+						obj_member &prop = obj.props[ctx.object];
+						if constexpr (use_self) {
+							auto &arr = outer;
+							auto &v = arr[std::string(ctx.id.name)];
+
+							obj_vtable::set(ctx.member_context[0], prop, v, value);
+						}
+					};
+
+					if constexpr (member_type_trait_v<Prop> == MT_enum) {
+						return [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const std::string &value) {
+							set_member(obj, ctx, outer, member_idx, enum_to_string<Prop>::to_enum(value));
+						};
+					}
+					else {
+						return [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const Prop &value) {
+							set_member(obj, ctx, outer, member_idx, value);
+						};
+					}
+				}
+
+				template<bool use_self, typename Prop>
+				static obj_vtable create(const member_object_type<Prop> &) {
+					obj_vtable vtable{};
+
+					if constexpr (std::is_enum_v<Type>) {
+						vtable.type = member_object_type<std::string>{};
+					}
+					else {
+						vtable.type = member_object_type<Type>{};
+					}
+
+					vtable.setter = create_set_value<use_self, Type>();
 
 					return vtable;
 				}
@@ -116,16 +172,21 @@ namespace tc {
 
 			template<typename Outer, bool use_self, typename Prop>
 			member_primitive_vtable<Outer, object<Outer>> create_primitive_vtable(member_object_type<Prop>) {
+				if constexpr (member_type_trait_v<Prop> < MT_object) {
+					static_assert(member_type_trait_v<Outer> >= MT_object, "Property type must be a primitive to create vtable");
+				}
+
 				if constexpr (member_type_trait_v<Outer> == MT_object) {
 					return ObjectPrimitiveVtableHelper<Outer>::create<use_self>(member_object_type_v<Prop>);
 				}
 				else if constexpr (member_type_trait_v<Outer> == MT_array) {
 					return ArrayPrimitiveVtableHelper<Outer>::create<use_self>(member_object_type_v<Prop>);
 				}
-				else {
-					static_assert(member_type_trait_v<Prop> >= MT_array, "Member type must be object to create vtable");
-					return member_primitive_vtable<Outer, object<Outer>>{};
+				else if constexpr (member_type_trait_v<Outer> == MT_map) {
+					return MapPrimitiveVtableHelper<Outer>::create<use_self>(member_object_type_v<Prop>);
 				}
+
+				return member_primitive_vtable<Outer, object<Outer>>{};
 			}
 		}    // namespace detail
 	}    // namespace schema

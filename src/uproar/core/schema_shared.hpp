@@ -1,9 +1,9 @@
 #ifndef UPROAR_CORE_SCHEMA_SHARED_HPP
 #define UPROAR_CORE_SCHEMA_SHARED_HPP
 
+#include <string_view>
 #include <type_traits>
 #include <vector>
-#include <string_view>
 
 #ifndef TC_STDINT
 #	define TC_STDINT
@@ -37,8 +37,10 @@ namespace tc {
 			MT_double,
 			MT_string,
 			MT_enum,
+
 			MT_object = 100,
 			MT_array,
+			MT_map,
 
 			MT_unknown = INT32_MAX,
 		};

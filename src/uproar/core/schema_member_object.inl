@@ -35,20 +35,45 @@ namespace tc {
 			}
 
 			template<typename Type>
+			context create_map_context(const std::string_view &name) {
+				context ctx{};
+				ctx.object = 0;
+				ctx.type = member_type_trait_v<Type>;
+				ctx.id.name = name;
+				ctx.member_context.resize(1);
+				return ctx;
+			}
+
+			template<typename Type>
 			context create_context(object<Type> &obj, std::string_view name) {
-				auto iter = obj.prop_lookup.find(name);
-				if (iter == std::end(obj.prop_lookup)) {
+				if constexpr (member_type_trait_v<Type> == MT_object) {
+					auto iter = obj.prop_lookup.find(name);
+					if (iter == std::end(obj.prop_lookup)) {
+						context ctx{};
+						ctx.type = MT_unknown;
+						return ctx;
+					}
+
+					context ctx{};
+					ctx.object = iter->second;
+					ctx.type = obj.props[iter->second].type;
+					ctx.id.name = obj.props[iter->second].name;
+					ctx.member_context.resize(obj.props.size());
+					return ctx;
+				}
+				else if constexpr (member_type_trait_v<Type> == MT_map) {
+					context ctx{};
+					ctx.object = 0;
+					ctx.type = obj.props[ctx.object].type;
+					ctx.id.name = name;
+					ctx.member_context.resize(1);
+					return ctx;
+				}
+				else {
 					context ctx{};
 					ctx.type = MT_unknown;
 					return ctx;
 				}
-
-				context ctx{};
-				ctx.object = iter->second;
-				ctx.type = obj.props[iter->second].type;
-				ctx.id.name = obj.props[iter->second].name;
-				ctx.member_context.resize(obj.props.size());
-				return ctx;
 			}
 
 			// Container / Array vtable creation
@@ -288,10 +313,132 @@ namespace tc {
 				}
 			};
 
+			// Map vtable creation
+			template<typename>
+			struct MapVtableHelper;
+
+			template<template<class, class, class...> typename OuterContainer, typename Key, typename Type, typename... Rest>
+			struct MapVtableHelper<OuterContainer<Key, Type, Rest...>> {
+				using Outer = OuterContainer<Key, Type, Rest...>;
+				static_assert(member_type_trait_v<Outer> == MT_map, "Map VTable helper should only be used with map types");
+				using ObjOuter = object<Outer>;
+				using obj_vtable = member_object_vtable<Outer, ObjOuter>;
+				using obj_member = member<Outer, ObjOuter>;
+				using obj_prim = member_primitive<Outer, ObjOuter>;
+				using obj_object = member_object<Outer, ObjOuter>;
+
+				template<typename Prop>
+				static auto create_set_value() {
+					return [](ObjOuter &obj, context_stack &stack, int stack_pos, Outer &outer, const auto &value) {
+						if constexpr (std::is_same_v<Outer, Prop>) {
+							using type_obj = object<Prop>;
+							using type_member = member<Prop, type_obj>;
+							using type_sub_object = member_object<Prop, type_obj>;
+							using type_ptr = member_ptr<Outer, Prop>;
+							context &ctx = stack[stack_pos];
+							type_obj &objY = type_obj::instance;
+							type_member &prop = objY.props[ctx.object];
+							type_sub_object &sub = objY.children[prop.child];
+
+							sub.set_value(objY, stack, stack_pos + 1, outer, value);
+						}
+						else if constexpr (member_type_trait_v<Prop> >= MT_object) {
+							using type_obj = object<Prop>;
+							using type_member = member<Prop, type_obj>;
+							using type_primitive = member_primitive<Prop, type_obj>;
+							using type_sub_object = member_object<Prop, type_obj>;
+							using type_ptr = member_ptr<Outer, Prop>;
+							// If it's an object underneath retrieve and move the stack along
+							context &ctx = stack[stack_pos];
+							obj_member &prop = obj.props[ctx.object];
+
+							auto &arr = outer;
+							auto &sub_obj = arr[std::string(ctx.id.name)];
+
+							type_obj &objY = type_obj::instance;
+							type_member &sub_prop = objY.props[0];
+							type_sub_object &sub = objY.children[sub_prop.child];
+							sub.set_value(objY, stack, stack_pos + 1, sub_obj, value);
+						}
+
+						else if constexpr (member_type_trait_v<Prop> < MT_object) {
+							// If it's an object underneath retrieve and move the stack along
+							context &ctx = stack[stack_pos];
+							auto &arr = outer;
+
+							obj_member &props = obj.props[ctx.object];
+							obj_prim &sub = obj.primitives[props.primitive];
+							sub.set_value(obj, ctx, arr, ctx.object, value);
+						}
+					};
+				}
+
+				template<typename Prop>
+				static auto create_push_back() {
+					return [](context_stack &stack, int stack_pos, const auto &val) {
+						using ValueType = std::remove_cv_t<std::remove_reference_t<decltype(val)>>;
+						if constexpr (member_type_trait_v<Prop> >= MT_object) {
+							using type_obj = object<Prop>;
+							using type_member = member<Prop, type_obj>;
+							using type_sub_object = member_object<Prop, type_obj>;
+							type_obj &objY = type_obj::instance;
+							if (stack_pos == stack.size()) {
+								if constexpr (std::is_same_v<ValueType, std::string_view>) {
+									auto ctx = create_map_context<Prop>(val);
+									stack.emplace_back() = std::move(ctx);
+								}
+							}
+							else if (stack_pos < stack.size()) {
+								// Grab the child member helper
+								type_member &props = objY.props[0];
+								type_sub_object &sub = objY.children[props.child];
+								sub.push_back(stack, stack_pos + 1, val);
+							}
+						}
+						else {
+							// Add this to the end of the stack since we don't want to keep passing the values
+							// around; since they could be different depending on if they are Object, Array, or Maps.
+							if (stack_pos != stack.size()) {
+								return;
+							}
+
+							if constexpr (std::is_same_v<ValueType, std::string_view>) {
+								stack.emplace_back() = create_map_context<Prop>(val);
+							}
+						}
+					};
+				}
+
+				template<typename Prop>
+				static obj_vtable create(const member_object_type<Prop> &) {
+					obj_vtable vtable{};
+
+					auto action = create_set_value<Type>();
+					vtable.set_bool = action;
+					vtable.set_char = action;
+					vtable.set_int16 = action;
+					vtable.set_int32 = action;
+					vtable.set_int64 = action;
+					vtable.set_uint8 = action;
+					vtable.set_uint16 = action;
+					vtable.set_uint32 = action;
+					vtable.set_uint64 = action;
+					vtable.set_float = action;
+					vtable.set_double = action;
+					vtable.set_string = action;
+
+					auto push_back_handler = create_push_back<Type>();
+					vtable.push_back = push_back_handler;
+					vtable.push_back_array = push_back_handler;
+
+					return vtable;
+				}
+			};
+
 			template<typename Outer, typename Prop>
 			member_object_vtable<Outer, object<Outer>> create_object_vtable(member_object_type<Prop>) {
 				if constexpr (member_type_trait_v<Prop> < MT_object) {
-					static_assert(member_type_trait_v<Outer> >= MT_array, "Member type must be object to create vtable");
+					static_assert(member_type_trait_v<Outer> >= MT_object, "Member type must be object to create vtable");
 				}
 
 				else if constexpr (member_type_trait_v<Outer> == MT_object) {
@@ -299,6 +446,9 @@ namespace tc {
 				}
 				else if constexpr (member_type_trait_v<Outer> == MT_array) {
 					return ArrayVtableHelper<Outer>::create(member_object_type_v<Prop>);
+				}
+				else if constexpr (member_type_trait_v<Outer> == MT_map) {
+					return MapVtableHelper<Outer>::create(member_object_type_v<Prop>);
 				}
 
 				return member_object_vtable<Outer, object<Outer>>{};
