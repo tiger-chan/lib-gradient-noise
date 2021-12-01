@@ -3,95 +3,133 @@
 namespace tc {
 	namespace schema {
 		namespace detail {
-			template<typename Outer, bool use_self, typename Prop>
-			member_primitive_vtable<Outer, object<Outer>> create_object_primitive_vtable(member_object_type<Prop>) {
+			template<typename>
+			struct ObjectPrimitiveVtableHelper;
+
+			template<typename Outer>
+			struct ObjectPrimitiveVtableHelper {
+				static_assert(member_type_trait_v<Outer> == MT_object, "Object Primitive VTable helper should only be used with object types");
 				using ObjOuter = object<Outer>;
-				member_primitive_vtable<Outer, ObjOuter> vtable;
+				using obj_vtable = member_primitive_vtable<Outer, ObjOuter>;
+				using obj_member = member<Outer, ObjOuter>;
+				using obj_prim = member_primitive<Outer, ObjOuter>;
+				using obj_object = member_object<Outer, ObjOuter>;
 
-				vtable.type = member_object_type<Prop>{};
+				template<bool use_self, typename Prop>
+				static auto create_set_value() {
+					using obj_ptr = member_ptr<Outer, Prop>;
+					static auto set_member = [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const auto &value) {
+						obj_member &prop = obj.props[ctx.object];
+						if constexpr (use_self) {
+							obj_vtable::set(ctx.member_context[ctx.object], prop, outer, value);
+						}
+						else {
+							obj_ptr ptr = obj.prop_ptrs<Prop>[prop.ptr];
+							auto &sub = outer.*ptr;
+							obj_vtable::set(ctx.member_context[ctx.object], prop, sub, value);
+						}
+					};
 
-				static auto set_member = [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const auto& value) {
-					member<Outer, ObjOuter> &mem = obj.props[member_idx];
-					if constexpr(use_self) {
-						member_primitive_vtable<Outer, ObjOuter>::set(ctx.member_context[member_idx], mem, outer, value);
+					if constexpr (member_type_trait_v<Prop> == MT_enum) {
+						return [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const std::string &value) {
+							set_member(obj, ctx, outer, member_idx, enum_to_string<Prop>::to_enum(value));
+						};
 					}
 					else {
-						member_ptr<Outer, Prop> ptr = obj.prop_ptrs<Prop>[mem.ptr];
-						member_primitive_vtable<Outer, ObjOuter>::set(ctx.member_context[member_idx], mem, outer.*ptr, value);
-					}
-				};
-				
-				if constexpr (member_type_trait_v<Prop> == MT_enum) {
-					vtable.setter = [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const std::string& value) {
-						set_member(obj, ctx, outer, member_idx, value);
+						return [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const Prop &value) {
+							set_member(obj, ctx, outer, member_idx, value);
+						};
 					}
 				}
-				else {
-					vtable.setter = [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const Prop& value) {
-						set_member(obj, ctx, outer, member_idx, value);
-					};
-				}
 
-				return vtable;
-			}
-			
-			template<typename Outer, bool use_self, typename Prop>
-			member_primitive_vtable<Outer, object<Outer>> create_array_primitive_vtable(member_object_type<Prop>) {
-				using ObjOuter = object<Outer>;
-				member_primitive_vtable<Outer, ObjOuter> vtable;
+				template<bool use_self, typename Prop>
+				static obj_vtable create(const member_object_type<Prop> &) {
+					obj_vtable vtable{};
 
-				vtable.type = member_object_type<Prop>{};
-
-				static auto set_member = [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const auto& value) {
-					member<Outer, ObjOuter> &mem = obj.props[member_idx];
-					if constexpr (use_self) {
-						auto &v = outer;
-						if (ctx.id.idx >= v.size()) {
-							v.resize(ctx.id.idx + 1);
-						}
-						member_primitive_vtable<Outer, ObjOuter>::set(ctx.member_context[0], mem, v[ctx.id.idx], value);
+					if constexpr (std::is_enum_v<Prop>) {
+						vtable.type = member_object_type<std::string>{};
 					}
 					else {
-						member_ptr<Outer, Prop> ptr = obj.prop_ptrs<Prop>[mem.ptr];
-						auto &v = outer.*ptr;
-						if (ctx.id.idx >= v.size()) {
-							v.resize(ctx.id.idx + 1);
-						}
-						member_primitive_vtable<Outer, ObjOuter>::set(ctx.member_context[0], mem, v[ctx.id.idx], value);
+						vtable.type = member_object_type<Prop>{};
 					}
-				};
+					vtable.setter = create_set_value<use_self, Prop>();
 
-				if constexpr (member_type_trait_v<Prop> == MT_enum) {
-					vtable.setter = [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const std::string& value) {
-						set_member(obj, ctx, outer, member_idx, value);
-					};
+					return vtable;
 				}
-				else {
-					vtable.setter = [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const Prop& value) {
-						set_member(obj, ctx, outer, member_idx, value);
+			};
+
+			template<typename>
+			struct ArrayPrimitiveVtableHelper;
+
+			template<template<class, class...> typename OuterContainer, typename Type, typename... Rest>
+			struct ArrayPrimitiveVtableHelper<OuterContainer<Type, Rest...>> {
+				using Outer = OuterContainer<Type, Rest...>;
+				static_assert(member_type_trait_v<Outer> == MT_array, "Array Primitive VTable helper should only be used with array types");
+				using ObjOuter = object<Outer>;
+				using obj_vtable = member_primitive_vtable<Outer, ObjOuter>;
+				using obj_member = member<Outer, ObjOuter>;
+				using obj_prim = member_primitive<Outer, ObjOuter>;
+				using obj_object = member_object<Outer, ObjOuter>;
+
+				template<bool use_self, typename Prop>
+				static auto create_set_value() {
+					using obj_ptr = member_ptr<Outer, Prop>;
+
+					static auto set_member = [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const auto &value) {
+						obj_member &prop = obj.props[ctx.object];
+						if constexpr (use_self) {
+							auto &arr = outer;
+							auto &v = arr[ctx.id.idx];
+
+							obj_vtable::set(ctx.member_context[0], prop, v, value);
+						}
 					};
+
+					if constexpr (member_type_trait_v<Prop> == MT_enum) {
+						return [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const std::string &value) {
+							set_member(obj, ctx, outer, member_idx, enum_to_string<Prop>::to_enum(value));
+						};
+					}
+					else {
+						return [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const Prop &value) {
+							set_member(obj, ctx, outer, member_idx, value);
+						};
+					}
 				}
 
-				return vtable;
-			}
+				template<bool use_self, typename Prop>
+				static obj_vtable create(const member_object_type<Prop> &) {
+					obj_vtable vtable{};
 
-			template<typename Outer,  bool use_self, typename Prop>
+					if constexpr (std::is_enum_v<Prop>) {
+						vtable.type = member_object_type<std::string>{};
+					}
+					else {
+						vtable.type = member_object_type<Prop>{};
+					}
+					
+					vtable.setter = create_set_value<use_self, Prop>();
+
+					return vtable;
+				}
+			};
+
+			template<typename Outer, bool use_self, typename Prop>
 			member_primitive_vtable<Outer, object<Outer>> create_primitive_vtable(member_object_type<Prop>) {
 				if constexpr (member_type_trait_v<Outer> == MT_object) {
-					return create_object_primitive_vtable<Outer, use_self>(member_object_type_v<Prop>);
+					return ObjectPrimitiveVtableHelper<Outer>::create<use_self>(member_object_type_v<Prop>);
 				}
 				else if constexpr (member_type_trait_v<Outer> == MT_array) {
-					return create_array_primitive_vtable<Outer, use_self>(member_object_type_v<Prop>);
+					return ArrayPrimitiveVtableHelper<Outer>::create<use_self>(member_object_type_v<Prop>);
 				}
 				else {
 					static_assert(member_type_trait_v<Prop> >= MT_array, "Member type must be object to create vtable");
 					return member_primitive_vtable<Outer, object<Outer>>{};
 				}
 			}
-		}
-	}
-}
-
+		}    // namespace detail
+	}    // namespace schema
+}    // namespace tc
 
 namespace tc {
 	namespace schema {
@@ -101,7 +139,7 @@ namespace tc {
 			member_primitive<Outer, ObjType>::member_primitive(ObjType &obj, member_object_type<Prop>)
 				: vtable{ create_primitive_vtable<Outer, true>(member_object_type_v<Prop>) } {
 			}
-			
+
 			template<typename Outer, typename ObjType>
 			template<typename Prop>
 			member_primitive<Outer, ObjType>::member_primitive(ObjType &obj, member_ptr<Outer, Prop>)
@@ -129,24 +167,15 @@ namespace tc {
 
 			template<typename Outer, typename ObjType>
 			template<typename X, typename Y>
-			void member_primitive_vtable<Outer, ObjType>::set(member_context& ctx, member<Outer, ObjType>&member, X &ptr_value, const Y &value) {
-				if constexpr(std::is_convertible_v<Y, X>) {
+			void member_primitive_vtable<Outer, ObjType>::set(member_context &ctx, member<Outer, ObjType> &member, X &ptr_value, const Y &value) {
+				if constexpr (std::is_convertible_v<Y, X>) {
 					object<Outer> &obj = object<Outer>::instance;
 					ctx.is_in_range = true;
 					if (member.range != schema::null) {
-						if constexpr (std::is_enum_v<X>) {
-							X prop = enum_to_string<Prop>::to_enum(value);
-							ctx.is_in_range = detail::check_constraint(obj.ranges<X>[member.range], member, prop);
-						}
-						else {
-							ctx.is_in_range = detail::check_constraint(obj.ranges<X>[member.range], member, value);
-						}
+						ctx.is_in_range = detail::check_constraint(obj.ranges<X>[member.range], member, value);
 					}
 
-					if constexpr (std::is_enum_v<X>) {
-						ptr_value = enum_to_string<X>::to_enum(value);
-					}
-					else if (member_type_trait_v<X> != MT_object) {
+					if constexpr (member_type_trait_v<X> < MT_object) {
 						ptr_value = static_cast<X>(value);
 					}
 					ctx.dirty = true;

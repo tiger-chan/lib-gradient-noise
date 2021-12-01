@@ -57,7 +57,7 @@ namespace tc {
 
 			template<typename Outer>
 			struct ObjectVtableHelper {
-				static_assert(member_type_trait_v<Outer> == MT_object, "Array VTable helper should only be used with array types");
+				static_assert(member_type_trait_v<Outer> == MT_object, "Object VTable helper should only be used with object types");
 				using ObjOuter = object<Outer>;
 				using obj_vtable = member_object_vtable<Outer, ObjOuter>;
 				using obj_member = member<Outer, ObjOuter>;
