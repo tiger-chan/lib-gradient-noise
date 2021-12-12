@@ -64,7 +64,7 @@ namespace tc {
 				else if constexpr (member_type_trait_v<Type> == MT_map) {
 					context ctx{};
 					ctx.object = 0;
-					ctx.type = obj.props[ctx.object].type;
+					ctx.type = obj.props.empty() ? member_type_trait_v<Type> : obj.props[0].type;
 					ctx.id.name = name;
 					ctx.member_context.resize(1);
 					return ctx;
@@ -91,33 +91,8 @@ namespace tc {
 
 				template<typename Prop>
 				static auto create_set_value() {
-					return [](ObjOuter &obj, context_stack &stack, int stack_pos, Outer &outer, const auto &value) {
-						if constexpr (std::is_same_v<Outer, Prop>) {
-							using type_obj = object<Prop>;
-							using type_member = member<Prop, type_obj>;
-							using type_sub_object = member_object<Prop, type_obj>;
-							using type_ptr = member_ptr<Outer, Prop>;
-							context &ctx = stack[stack_pos];
-							type_member &prop = obj.props[ctx.object];
-							if (stack_pos == stack.size() - 1) {
-								if (prop.primitive != null) {
-									obj_prim &sub = obj.primitives[prop.primitive];
-									sub.set_value(obj, ctx, outer, ctx.object, value);
-								}
-							}
-							else {
-								type_sub_object &sub = obj.children[prop.child];
-								if (prop.ptr != null && prop.ptr < obj.prop_ptrs<Prop>.size()) {
-									type_ptr ptr = obj.prop_ptrs<Prop>[prop.ptr];
-									auto &sub_obj = outer.*ptr;
-									sub.set_value(obj, stack, stack_pos + 1, sub_obj, value);
-								}
-								else {
-									sub.set_value(obj, stack, stack_pos, outer, value);
-								}
-							}
-						}
-						else if constexpr (member_type_trait_v<Prop> >= MT_object) {
+					return [](const ObjOuter &obj, context_stack &stack, int stack_pos, Outer &outer, const auto &value) {
+						if constexpr (member_type_trait_v<Prop> >= MT_object) {
 							using type_obj = object<Prop>;
 							using type_member = member<Prop, type_obj>;
 							using type_primitive = member_primitive<Prop, type_obj>;
@@ -125,14 +100,13 @@ namespace tc {
 							using type_ptr = member_ptr<Outer, Prop>;
 							// If it's an object underneath retrieve and move the stack along
 							context &ctx = stack[stack_pos];
-							obj_member &prop = obj.props[ctx.object];
-							type_ptr ptr = obj.prop_ptrs<Prop>[prop.ptr];
+							const obj_member &prop = obj.props[ctx.object];
+							const type_ptr ptr = obj.prop_ptrs<Prop>[prop.ptr];
 
-							auto &sub_obj = outer.*ptr;
-							type_obj &objY = type_obj::instance;
-							type_member &sub_prop = objY.props[0];
-							type_sub_object &sub = objY.children[sub_prop.child];
-							sub.set_value(objY, stack, stack_pos + 1, sub_obj, value);
+							auto &sub = outer.*ptr;
+
+							object<Prop> &objY = object<Prop>::instance;
+							objY.self.set_value(objY, stack, stack_pos + 1, sub, value);
 						}
 					};
 				}
@@ -162,6 +136,30 @@ namespace tc {
 				}
 
 				template<typename Prop>
+				static auto create_visitor() {
+					using obj_ptr = member_ptr<Outer, Prop>;
+					return [](const ObjOuter &obj, schema::visitor &v, Outer &outer, const std::string_view &outer_name) {
+						if constexpr (member_type_trait_v<Prop> >= MT_object) {
+							using type_obj = object<Prop>;
+							using type_member = member<Prop, type_obj>;
+							using type_sub_object = member_object<Prop, type_obj>;
+							using type_ptr = member_ptr<Outer, Prop>;
+
+							auto prop_id = obj.prop_lookup.find(outer_name);
+							if (prop_id == std::end(obj.prop_lookup)) {
+								return;
+							}
+							const obj_member &prop = obj.props.at(prop_id->second);
+							type_ptr ptr = obj.prop_ptrs<Prop>[prop.ptr];
+							auto &sub = outer.*ptr;
+
+							object<Prop> &objY = object<Prop>::instance;
+							objY.self.visit(objY, v, sub, prop.name);
+						}
+					};
+				}
+
+				template<typename Prop>
 				static obj_vtable create(const member_object_type<Prop> &) {
 					obj_vtable vtable{};
 
@@ -183,6 +181,8 @@ namespace tc {
 					vtable.push_back = push_back_handler;
 					vtable.push_back_array = push_back_handler;
 
+					vtable.visit = create_visitor<Prop>();
+
 					return vtable;
 				}
 			};
@@ -203,20 +203,8 @@ namespace tc {
 
 				template<typename Prop>
 				static auto create_set_value() {
-					return [](ObjOuter &obj, context_stack &stack, int stack_pos, Outer &outer, const auto &value) {
-						if constexpr (std::is_same_v<Outer, Prop>) {
-							using type_obj = object<Prop>;
-							using type_member = member<Prop, type_obj>;
-							using type_sub_object = member_object<Prop, type_obj>;
-							using type_ptr = member_ptr<Outer, Prop>;
-							context &ctx = stack[stack_pos];
-							type_obj &objY = type_obj::instance;
-							type_member &prop = objY.props[ctx.object];
-							type_sub_object &sub = objY.children[prop.child];
-
-							sub.set_value(objY, stack, stack_pos + 1, outer, value);
-						}
-						else if constexpr (member_type_trait_v<Prop> >= MT_object) {
+					return [](const ObjOuter &obj, context_stack &stack, int stack_pos, Outer &outer, const auto &value) {
+						if constexpr (member_type_trait_v<Prop> >= MT_object) {
 							using type_obj = object<Prop>;
 							using type_member = member<Prop, type_obj>;
 							using type_primitive = member_primitive<Prop, type_obj>;
@@ -224,7 +212,7 @@ namespace tc {
 							using type_ptr = member_ptr<Outer, Prop>;
 							// If it's an object underneath retrieve and move the stack along
 							context &ctx = stack[stack_pos];
-							obj_member &prop = obj.props[ctx.object];
+							const obj_member &prop = obj.props[ctx.object];
 
 							auto &arr = outer;
 							if (ctx.id.idx <= arr.size()) {
@@ -247,8 +235,8 @@ namespace tc {
 								arr.resize(ctx.id.idx + 1);
 							}
 
-							obj_member &props = obj.props[ctx.object];
-							obj_prim &sub = obj.primitives[props.primitive];
+							const obj_member &props = obj.props[ctx.object];
+							const obj_prim &sub = obj.primitives[props.primitive];
 							sub.set_value(obj, ctx, arr, ctx.object, value);
 						}
 					};
@@ -288,6 +276,21 @@ namespace tc {
 				}
 
 				template<typename Prop>
+				static auto create_visitor() {
+					using obj_ptr = member_ptr<Outer, Prop>;
+					return [](const ObjOuter &obj, schema::visitor &v, Outer &outer, const std::string_view &outer_name) {
+						if constexpr (member_type_trait_v<Prop> >= MT_object) {
+							const obj_member &prop = obj.props[0];
+							object<Prop> &objY = object<Prop>::instance;
+							for (auto &&item : outer) {
+								const static constexpr std::string_view array_item_name{ "" };
+								objY.self.visit(objY, v, item, array_item_name);
+							}
+						}
+					};
+				}
+
+				template<typename Prop>
 				static obj_vtable create(const member_object_type<Prop> &) {
 					obj_vtable vtable{};
 
@@ -309,6 +312,8 @@ namespace tc {
 					vtable.push_back = push_back_handler;
 					vtable.push_back_array = push_back_handler;
 
+					vtable.visit = create_visitor<Type>();
+
 					return vtable;
 				}
 			};
@@ -329,20 +334,8 @@ namespace tc {
 
 				template<typename Prop>
 				static auto create_set_value() {
-					return [](ObjOuter &obj, context_stack &stack, int stack_pos, Outer &outer, const auto &value) {
-						if constexpr (std::is_same_v<Outer, Prop>) {
-							using type_obj = object<Prop>;
-							using type_member = member<Prop, type_obj>;
-							using type_sub_object = member_object<Prop, type_obj>;
-							using type_ptr = member_ptr<Outer, Prop>;
-							context &ctx = stack[stack_pos];
-							type_obj &objY = type_obj::instance;
-							type_member &prop = objY.props[ctx.object];
-							type_sub_object &sub = objY.children[prop.child];
-
-							sub.set_value(objY, stack, stack_pos + 1, outer, value);
-						}
-						else if constexpr (member_type_trait_v<Prop> >= MT_object) {
+					return [](const ObjOuter &obj, context_stack &stack, int stack_pos, Outer &outer, const auto &value) {
+						if constexpr (member_type_trait_v<Prop> >= MT_object) {
 							using type_obj = object<Prop>;
 							using type_member = member<Prop, type_obj>;
 							using type_primitive = member_primitive<Prop, type_obj>;
@@ -350,7 +343,7 @@ namespace tc {
 							using type_ptr = member_ptr<Outer, Prop>;
 							// If it's an object underneath retrieve and move the stack along
 							context &ctx = stack[stack_pos];
-							obj_member &prop = obj.props[ctx.object];
+							const obj_member &prop = obj.props[ctx.object];
 
 							auto &arr = outer;
 							auto &sub_obj = arr[std::string(ctx.id.name)];
@@ -410,6 +403,20 @@ namespace tc {
 				}
 
 				template<typename Prop>
+				static auto create_visitor() {
+					using obj_ptr = member_ptr<Outer, Prop>;
+					return [](const ObjOuter &obj, schema::visitor &v, Outer &outer, const std::string_view &outer_name) {
+						if constexpr (member_type_trait_v<Prop> >= MT_object) {
+							object<Prop> &objY = object<Prop>::instance;
+
+							for (auto &&item : outer) {
+								objY.self.visit(objY, v, item.second, item.first);
+							}
+						}
+					};
+				}
+
+				template<typename Prop>
 				static obj_vtable create(const member_object_type<Prop> &) {
 					obj_vtable vtable{};
 
@@ -430,6 +437,8 @@ namespace tc {
 					auto push_back_handler = create_push_back<Type>();
 					vtable.push_back = push_back_handler;
 					vtable.push_back_array = push_back_handler;
+
+					vtable.visit = create_visitor<Type>();
 
 					return vtable;
 				}
@@ -456,7 +465,7 @@ namespace tc {
 
 			template<typename Outer, typename ObjType>
 			template<typename X>
-			void member_object_vtable<Outer, ObjType>::set_value(ObjType &obj, context_stack &stack, int stack_pos, Outer &outer, const X &value) {
+			void member_object_vtable<Outer, ObjType>::set_value(const ObjType &obj, context_stack &stack, int stack_pos, Outer &outer, const X &value) const {
 				if constexpr (std::is_same_v<X, bool>) {
 					set_bool(obj, stack, stack_pos, outer, value);
 				}
@@ -505,23 +514,29 @@ namespace tc {
 			template<typename Outer, typename ObjType>
 			template<typename Y>
 			member_object<Outer, ObjType>::member_object(ObjType &obj, member_object_type<Y>)
-				: vtable{ create_object_vtable<Outer>(member_object_type_v<Y>) } {
+				: type_id{ type_identifier<Y>() }
+				, vtable{ create_object_vtable<Outer>(member_object_type_v<Y>) } {
 			}
 
 			template<typename Outer, typename ObjType>
-			void member_object<Outer, ObjType>::push_back(context_stack &stack, int stack_pos, const std::string_view &name) {
+			void member_object<Outer, ObjType>::push_back(context_stack &stack, int stack_pos, const std::string_view &name) const {
 				vtable.push_back(stack, stack_pos, name);
 			}
 
 			template<typename Outer, typename ObjType>
-			void member_object<Outer, ObjType>::push_back(context_stack &stack, int32 stack_pos, int32 array_idx) {
+			void member_object<Outer, ObjType>::push_back(context_stack &stack, int32 stack_pos, int32 array_idx) const {
 				vtable.push_back_array(stack, stack_pos, array_idx);
 			}
 
 			template<typename Outer, typename ObjType>
 			template<typename Value>
-			void member_object<Outer, ObjType>::set_value(ObjType &obj, context_stack &stack, int stack_pos, Outer &outer, const Value &value) {
+			void member_object<Outer, ObjType>::set_value(const ObjType &obj, context_stack &stack, int stack_pos, Outer &outer, const Value &value) const {
 				vtable.set_value<Value>(obj, stack, stack_pos, outer, value);
+			}
+
+			template<typename Outer, typename ObjType>
+			void member_object<Outer, ObjType>::visit(const ObjType &obj, schema::visitor &v, Outer &outer, const std::string_view &outer_name) const {
+				vtable.visit(obj, v, outer, outer_name);
 			}
 		}    // namespace detail
 	}    // namespace schema

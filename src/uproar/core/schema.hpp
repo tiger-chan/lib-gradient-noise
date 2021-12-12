@@ -1,10 +1,11 @@
 #ifndef UPROAR_CORE_SCHEMA_HPP
 #define UPROAR_CORE_SCHEMA_HPP
 
+#include "schema_traits.hpp"
+
+#include <string_view>
 #include <type_traits>
 #include <vector>
-#include <string_view>
-#include "schema_traits.hpp"
 
 namespace tc {
 	namespace schema {
@@ -16,20 +17,32 @@ namespace tc {
 
 			template<typename T>
 			static const constexpr member_object_type<T> member_object_type_v{};
-			
+
 			template<typename Outer, typename ObjType>
 			struct member;
-			
+
 			template<typename Outer, typename ObjType>
 			struct member_primitive;
-			
+
 			template<typename Outer, typename ObjType>
 			struct member_object;
-		}
+
+			id_type type_id_gen() {
+				static id_type i = 0;
+				return i++;
+			}
+
+			template<typename Class>
+			auto type_identifier() {
+				static id_type id = type_id_gen();
+				return id;
+			}
+		}    // namespace detail
 
 		struct context;
 		struct member_context;
 		struct context_stack;
+		struct visitor;
 
 		template<typename>
 		struct required;
@@ -45,7 +58,7 @@ namespace tc {
 			static std::string_view to_string(X x);
 			static X to_enum(std::string_view x);
 		};
-		
+
 		template<typename Type, typename Return>
 		using member_ptr = Return Type::*;
 

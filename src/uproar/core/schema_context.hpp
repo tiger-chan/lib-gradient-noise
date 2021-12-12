@@ -17,6 +17,7 @@ namespace tc {
 			};
 			id_type object;
 			member_type type;
+			id_type type_id;
 			Id id{ 0 };
 			std::vector<member_context> member_context;
 		};

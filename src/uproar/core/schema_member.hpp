@@ -18,13 +18,14 @@ namespace tc {
 			struct member {
 				template<typename Y, typename... Z, template<class> typename... Constraint>
 				member(ObjType &obj, std::string_view name, member_object_type<Y> mem, std::string_view desc, Constraint<Z> &&...details);
-				
+
 				template<typename Y, typename... Z, template<class> typename... Constraint>
 				member(ObjType &obj, std::string_view name, member_ptr<Outer, Y> mem, std::string_view desc, Constraint<Z> &&...details);
 
 				template<typename Y, template<typename> typename Constraint>
 				void add_constraint(ObjType &obj, Constraint<Y> &detail);
 
+				const id_type type_id{ null };
 				std::string_view name{};
 				std::string_view desc{};
 				member_type type{};

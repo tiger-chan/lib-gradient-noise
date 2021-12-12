@@ -7,6 +7,8 @@
 #include "schema_member_object.hpp"
 #include "schema_member_primitive.hpp"
 #include "schema_options.hpp"
+#include "schema_self.hpp"
+#include "schema_visitor.hpp"
 
 #include <unordered_map>
 
@@ -16,6 +18,7 @@ namespace tc {
 			template<typename Type>
 			struct object {
 			public:
+				using Self = detail::self_object<Type, object<Type>>;
 				using obj_member = detail::member<Type, object<Type>>;
 				using obj_forward = detail::member_object<Type, object<Type>>;
 				using obj_primitive = detail::member_primitive<Type, object<Type>>;
@@ -27,13 +30,13 @@ namespace tc {
 				void add_member(const char *name, member_ptr<Type, Y> mem_ptr, const char *desc, Constraint<Z> &&...constraints);
 
 				template<typename Value>
-				void set_value(context_stack &stack, Type &obj, const Value &value);
+				void set_value(context_stack &stack, Type &obj, const Value &value) const;
 
-				void push_back(context_stack &stack, int stack_pos, std::string_view name);
-				void push_back(context_stack &stack, std::string_view name);
-				void push_back(context_stack &stack, int stack_pos, int32 array_idx);
-				void push_back(context_stack &stack, int32 array_idx);
-				context pop_back(context_stack &stack);
+				void push_back(context_stack &stack, int stack_pos, std::string_view name) const;
+				void push_back(context_stack &stack, std::string_view name) const;
+				void push_back(context_stack &stack, int stack_pos, int32 array_idx) const;
+				void push_back(context_stack &stack, int32 array_idx) const;
+				context pop_back(context_stack &stack) const;
 
 				/**
 				 * @brief Set the value object
@@ -45,11 +48,16 @@ namespace tc {
 				 * @param value
 				 */
 				template<typename Prop, typename Value>
-				void set_value(member_context &member_ctx, obj_member &member, Type &obj, const Value &value);
+				void set_value(member_context &member_ctx, obj_member &member, Type &obj, const Value &value) const;
+
+				template<typename Value>
+				void visit(schema::visitor &v, Value &val) const;
 
 				static object<Type> instance;
 				static constexpr member_type type = member_type_trait_v<Type>;
 
+				id_type type_id{ type_identifier<Type>() };
+				Self self{};
 				std::vector<obj_member> props;
 				std::vector<obj_forward> children;
 				std::vector<obj_primitive> primitives;

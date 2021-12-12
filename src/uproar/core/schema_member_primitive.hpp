@@ -23,7 +23,7 @@ namespace tc {
 				member_object_type<std::string>>;
 
 			template<typename Outer, typename ObjType, typename SetType>
-			using PrimitiveSetter = void (*)(ObjType &, context &, Outer &, id_type, const SetType &);
+			using PrimitiveSetter = void (*)(const ObjType &, context &, Outer &, id_type, const SetType &);
 
 			template<typename Outer, typename ObjType>
 			struct member_primitive_vtable {
@@ -43,14 +43,17 @@ namespace tc {
 					Setter<double>,
 					Setter<std::string>>;
 
+				using Visitor = void (*)(const ObjType &, schema::visitor &, Outer &, id_type);
+
 				PrimitiveTypeVariant type;
 				SetterVariant setter;
+				Visitor visit;
 
 				template<typename X>
-				void set_value(ObjType &obj, context &ctx, Outer &outer, id_type member_idx, const X &value);
+				void set_value(const ObjType &obj, context &ctx, Outer &outer, id_type member_idx, const X &value) const;
 
 				template<typename X, typename Y>
-				static void set(member_context &ctx, member<Outer, ObjType> &member, X &ptr_value, const Y &value);
+				static void set(member_context &ctx, const member<Outer, ObjType> &member, X &ptr_value, const Y &value);
 			};
 
 			template<typename Outer, typename ObjType>
@@ -62,7 +65,11 @@ namespace tc {
 				member_primitive(ObjType &obj, member_ptr<Outer, Y> mem);
 
 				template<typename Value>
-				void set_value(ObjType &obj, context &ctx, Outer &outer, id_type member_idx, const Value &value);
+				void set_value(const ObjType &obj, context &ctx, Outer &outer, id_type member_idx, const Value &value) const;
+
+				void visit(const ObjType &obj, schema::visitor &v, Outer &val, id_type id) const;
+				const id_type type_id{};
+
 			private:
 				member_primitive_vtable<Outer, ObjType> vtable;
 			};

@@ -573,38 +573,40 @@ namespace tc {
 			void parse_false(parser_interface &interface, lexer_token *&cursor, lexer_token *tend, const std::string_view &name);
 		};
 
-		void parse(parser_interface &interface, std::string_view content) {
-			std::vector<lexer_token> tokens;
-			tokens.reserve(100);
-			{
-				schema_lexer lexer{ content.data(), content.data() + content.size() };
+		namespace json {
+			void parse(parser_interface &interface, std::string_view content) {
+				std::vector<lexer_token> tokens;
+				tokens.reserve(100);
+				{
+					schema_lexer lexer{ content.data(), content.data() + content.size() };
 
-				lexer_result result;
-				lexer_token token;
-				while ((result = lexer.read<json_grammer>(&token)) == LR_success) {
-					if (json_grammer::filter(token.kind)) {
-						continue;
+					lexer_result result;
+					lexer_token token;
+					while ((result = lexer.read<json_grammer>(&token)) == LR_success) {
+						if (json_grammer::filter(token.kind)) {
+							continue;
+						}
+						tokens.emplace_back(token);
 					}
-					tokens.emplace_back(token);
+
+					if (result != LR_complete) {
+						// There was a parse error of some form.
+						return;
+					}
 				}
 
-				if (result != LR_complete) {
-					// There was a parse error of some form.
+				if (tokens.empty()) {
+					// There wasn't anything to parse, also probably a failure?
 					return;
 				}
-			}
 
-			if (tokens.empty()) {
-				// There wasn't anything to parse, also probably a failure?
-				return;
+				// Perform actual parsing to internal structs here.
+				std::string_view name{ "" };
+				json_parser parser{};
+				lexer_token *cursor = tokens.data();
+				parser.parse_value(interface, cursor, tokens.data() + tokens.size(), "");
 			}
-
-			// Perform actual parsing to internal structs here.
-			std::string_view name{ "" };
-			json_parser parser{};
-			lexer_token *cursor = tokens.data();
-			parser.parse_value(interface, cursor, tokens.data() + tokens.size(), "");
-		}
+		}    // namespace json
 
 		void json_parser::parse_value(parser_interface &interface, lexer_token *&cursor, lexer_token *tend, const std::string_view &name) {
 			switch (cursor->kind) {
@@ -702,7 +704,7 @@ namespace tc {
 		}
 
 		void json_parser::parse_number(parser_interface &interface, lexer_token *&cursor, lexer_token *tend, const std::string_view &name) {
-			std::string_view value{cursor->data, cursor->size};
+			std::string_view value{ cursor->data, cursor->size };
 
 			bool is_negative = value[0] == '-';
 			if (is_negative) {
@@ -777,7 +779,6 @@ namespace tc {
 				interface.set_value<int64>(name, integer);
 			}
 
-			
 			++cursor;
 		}
 

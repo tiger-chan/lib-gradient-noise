@@ -1,5 +1,6 @@
-#include "schema_object.hpp"
 #include "mapper.hpp"
+#include "schema_object.hpp"
+#include "schema_visitor.hpp"
 
 namespace tc {
 	namespace schema {
@@ -58,7 +59,7 @@ namespace tc {
 				detail::object<T> &root = detail::object<T>::instance;
 				root.push_back(stack, name);
 			};
-			
+
 			interface.vtable.begin_array_element = [](context_stack &stack, int32 idx) {
 				detail::object<T> &root = detail::object<T>::instance;
 				root.push_back(stack, idx);
@@ -77,20 +78,15 @@ namespace tc {
 
 		template<typename V>
 		void parser_interface::set_value(std::string_view name, const V &value) {
-
 #define SET_VTABLE(NAME, TYPE) \
 	if constexpr (std::is_same_v<V, TYPE>) { \
 		vtable.NAME(stack, data, name, value); \
 	}
 
 			SET_VTABLE(set_bool, bool)
-			else SET_VTABLE(set_char, char) else SET_VTABLE(set_int16, int16) else SET_VTABLE(set_int32, int32) else SET_VTABLE(set_int64, int64)
-			else SET_VTABLE(set_uint8, uint8) else SET_VTABLE(set_uint16, uint16) else SET_VTABLE(set_uint32, uint32) else SET_VTABLE(set_uint64, uint64)
-			else SET_VTABLE(set_float, float) else SET_VTABLE(set_double, double)
-			else SET_VTABLE(set_string, std::string)
+			else SET_VTABLE(set_char, char) else SET_VTABLE(set_int16, int16) else SET_VTABLE(set_int32, int32) else SET_VTABLE(set_int64, int64) else SET_VTABLE(set_uint8, uint8) else SET_VTABLE(set_uint16, uint16) else SET_VTABLE(set_uint32, uint32) else SET_VTABLE(set_uint64, uint64) else SET_VTABLE(set_float, float) else SET_VTABLE(set_double, double) else SET_VTABLE(set_string, std::string)
 
 #undef SET_VTABLE
-
 		}
 
 		void parser_interface::set_null(std::string_view name) {
@@ -125,11 +121,164 @@ namespace tc {
 
 namespace tc {
 	namespace schema {
-		template<typename Object, typename Content>
-		void to_object(Object &obj, Content &content) {
-			parser_interface interface = parser_interface::create(obj);
+		namespace json {
+			struct visitor_state {
+				options opt{};
+				std::basic_ostream<char> *stream{ nullptr };
+				int32 indent_level{ 0 };
+				bool is_first_value{ true };
+			};
+		}    // namespace json
 
-			parse(interface, content);
+		template<>
+		visitor visitor::create<json::visitor_state>(json::visitor_state &obj) {
+			using State = json::visitor_state;
+			// TODO specialize this for json writing
+			visitor interface{};
+			interface.data = &obj;
+			static auto as_state = [](void *d) -> State & {
+				return *static_cast<State *>(d);
+			};
+
+			static auto add_indentation = [](State &state) {
+				if (state.indent_level > 0 && !state.opt.indent.empty()) {
+					*state.stream << '\n';
+					for (int32 i = 0; i < state.indent_level; ++i) {
+						*state.stream << state.opt.indent;
+					}
+				}
+			};
+
+			static auto add_value_separator = [](State &state) {
+				if (!state.is_first_value) {
+					*state.stream << ',';
+				}
+			};
+
+			static auto escape_string = [](const std::string_view &value) -> std::string {
+				std::string str{ value.data(), value.size() };
+				return str;
+			};
+
+			static auto add_name = [](State &state, std::string_view name) {
+				if (!name.empty()) {
+					*state.stream << '"' << escape_string(name) << '"' << ": ";
+				}
+			};
+
+			auto setter = [](void *data, const std::string_view &name, const auto &value) {
+				State &d = as_state(data);
+				add_value_separator(d);
+				add_indentation(d);
+				add_name(d, name);
+
+				using ValueType = std::decay_t<decltype(value)>;
+				if constexpr (std::is_same_v<ValueType, bool>) {
+					*d.stream << std::boolalpha << value;
+				}
+				if constexpr (std::is_same_v<ValueType, std::string>) {
+					*d.stream << '"' << escape_string(value) << '"';
+				}
+				else {
+					*d.stream << value;
+				}
+
+				d.is_first_value = false;
+			};
+
+			interface.vtable.set_bool = setter;
+			interface.vtable.set_char = setter;
+			interface.vtable.set_int16 = setter;
+			interface.vtable.set_int32 = setter;
+			interface.vtable.set_int64 = setter;
+			interface.vtable.set_uint8 = setter;
+			interface.vtable.set_uint16 = setter;
+			interface.vtable.set_uint32 = setter;
+			interface.vtable.set_uint64 = setter;
+			interface.vtable.set_float = setter;
+			interface.vtable.set_double = setter;
+			interface.vtable.set_string = setter;
+
+			interface.vtable.set_null = [](void *data, const std::string_view &name) {
+				State &d = as_state(data);
+				add_value_separator(d);
+				add_indentation(d);
+				add_name(d, name);
+				*d.stream << "null";
+				d.is_first_value = false;
+			};
+
+			interface.vtable.begin_object = [](void *data, const std::string_view &name) {
+				State &d = as_state(data);
+				add_value_separator(d);
+				add_indentation(d);
+
+				// starting to write a new depth
+				d.is_first_value = true;
+
+				add_name(d, name);
+				*d.stream << '{';
+				++d.indent_level;
+			};
+
+			interface.vtable.end_object = [](void *data, const std::string_view &name) {
+				State &d = as_state(data);
+
+				--d.indent_level;
+				add_indentation(d);
+
+				*d.stream << '}';
+				d.is_first_value = false;
+			};
+
+			interface.vtable.begin_array = [](void *data, const std::string_view &name) {
+				State &d = as_state(data);
+				add_value_separator(d);
+				add_indentation(d);
+
+				// starting to write a new depth
+				d.is_first_value = true;
+
+				add_name(d, name);
+
+				*d.stream << '[';
+				++d.indent_level;
+			};
+
+			interface.vtable.end_array = [](void *data, const std::string_view &name) {
+				State &d = as_state(data);
+
+				--d.indent_level;
+				add_indentation(d);
+
+				*d.stream << ']';
+				d.is_first_value = false;
+			};
+
+			return interface;
 		}
+	}    // namespace schema
+}    // namespace tc
+
+namespace tc {
+	namespace schema {
+		namespace json {
+			template<typename Object, typename Content>
+			void to_object(Object &obj, Content &content) {
+				parser_interface interface = parser_interface::create(obj);
+
+				parse(interface, content);
+			}
+
+			template<typename Object, typename Stream>
+			void to_stream(Object &obj, Stream &stream, options opt) {
+				json::visitor_state state;
+				state.opt = opt;
+				state.stream = &stream;
+
+				visitor interface = visitor::create(state);
+				visit(interface, obj);
+			}
+		}    // namespace json
 	}    // namespace schema
 }    // namespace tc

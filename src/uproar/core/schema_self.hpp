@@ -1,5 +1,5 @@
-#ifndef UPROAR_CORE_SCHEMA_MEMBER_OBJECT_HPP
-#define UPROAR_CORE_SCHEMA_MEMBER_OBJECT_HPP
+#ifndef UPROAR_CORE_SCHEMA_SELF_HPP
+#define UPROAR_CORE_SCHEMA_SELF_HPP
 
 #include "schema.hpp"
 
@@ -9,7 +9,7 @@ namespace tc {
 	namespace schema {
 		namespace detail {
 			template<typename Outer, typename ObjType>
-			struct member_object_vtable {
+			struct self_vtable {
 				template<typename T>
 				using push_back_t = void (*)(context_stack &, int, T);
 				template<typename SetType>
@@ -38,9 +38,8 @@ namespace tc {
 			};
 
 			template<typename Outer, typename ObjType>
-			struct member_object {
-				template<typename Y>
-				member_object(ObjType &obj, member_object_type<Y> mem);
+			struct self_object {
+				self_object();
 
 				void push_back(context_stack &, int32, const std::string_view &) const;
 				void push_back(context_stack &, int32, int32) const;
@@ -52,12 +51,12 @@ namespace tc {
 				const id_type type_id;
 
 			private:
-				member_object_vtable<Outer, ObjType> vtable;
+				self_vtable<Outer, ObjType> vtable;
 			};
 		}    // namespace detail
 	}    // namespace schema
 }    // namespace tc
 
-#include "schema_member_object.inl"
+#include "schema_self.inl"
 
-#endif    // UPROAR_CORE_SCHEMA_MEMBER_OBJECT_HPP
+#endif    // UPROAR_CORE_SCHEMA_SELF_HPP

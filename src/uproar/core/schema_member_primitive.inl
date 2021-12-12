@@ -18,28 +18,41 @@ namespace tc {
 				template<bool use_self, typename Prop>
 				static auto create_set_value() {
 					using obj_ptr = member_ptr<Outer, Prop>;
-					static auto set_member = [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const auto &value) {
-						obj_member &prop = obj.props[ctx.object];
+					static auto set_member = [](const ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const auto &value) {
+						const obj_member &prop = obj.props.at(ctx.object);
 						if constexpr (use_self) {
 							obj_vtable::set(ctx.member_context[ctx.object], prop, outer, value);
 						}
 						else {
-							obj_ptr ptr = obj.prop_ptrs<Prop>[prop.ptr];
+							const obj_ptr ptr = obj.prop_ptrs<Prop>.at(prop.ptr);
 							auto &sub = outer.*ptr;
 							obj_vtable::set(ctx.member_context[ctx.object], prop, sub, value);
 						}
 					};
 
 					if constexpr (member_type_trait_v<Prop> == MT_enum) {
-						return [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const std::string &value) {
+						return [](const ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const std::string &value) {
 							set_member(obj, ctx, outer, member_idx, enum_to_string<Prop>::to_enum(value));
 						};
 					}
 					else {
-						return [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const Prop &value) {
+						return [](const ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const Prop &value) {
 							set_member(obj, ctx, outer, member_idx, value);
 						};
 					}
+				}
+
+				template<bool use_self, typename Prop>
+				static auto create_visitor() {
+					using obj_ptr = member_ptr<Outer, Prop>;
+					return [](const ObjOuter &obj, schema::visitor &v, Outer &outer, id_type member_idx) {
+						const obj_member &prop = obj.props[member_idx];
+						if constexpr (!use_self) {
+							obj_ptr ptr = obj.prop_ptrs<Prop>[prop.ptr];
+							auto &sub = outer.*ptr;
+							v.set(prop.name, sub);
+						}
+					};
 				}
 
 				template<bool use_self, typename Prop>
@@ -47,12 +60,13 @@ namespace tc {
 					obj_vtable vtable{};
 
 					if constexpr (std::is_enum_v<Prop>) {
-						vtable.type = member_object_type<std::string>{};
+						vtable.type = member_object_type_v<std::string>;
 					}
 					else {
-						vtable.type = member_object_type<Prop>{};
+						vtable.type = member_object_type_v<Prop>;
 					}
 					vtable.setter = create_set_value<use_self, Prop>();
+					vtable.visit = create_visitor<use_self, Prop>();
 
 					return vtable;
 				}
@@ -75,8 +89,8 @@ namespace tc {
 				static auto create_set_value() {
 					using obj_ptr = member_ptr<Outer, Prop>;
 
-					static auto set_member = [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const auto &value) {
-						obj_member &prop = obj.props[ctx.object];
+					static auto set_member = [](const ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const auto &value) {
+						const obj_member &prop = obj.props.at(ctx.object);
 						if constexpr (use_self) {
 							auto &arr = outer;
 							auto &v = arr[ctx.id.idx];
@@ -86,15 +100,29 @@ namespace tc {
 					};
 
 					if constexpr (member_type_trait_v<Prop> == MT_enum) {
-						return [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const std::string &value) {
+						return [](const ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const std::string &value) {
 							set_member(obj, ctx, outer, member_idx, enum_to_string<Prop>::to_enum(value));
 						};
 					}
 					else {
-						return [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const Prop &value) {
+						return [](const ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const Prop &value) {
 							set_member(obj, ctx, outer, member_idx, value);
 						};
 					}
+				}
+
+				template<bool use_self, typename Prop>
+				static auto create_visitor() {
+					using obj_ptr = member_ptr<Outer, Prop>;
+					return [](const ObjOuter &obj, schema::visitor &v, Outer &outer, id_type member_idx) {
+						if constexpr (use_self) {
+							auto &arr = outer;
+							for (const auto &i : arr) {
+								static constexpr std::string_view empty_name{ "" };
+								v.set(empty_name, i);
+							}
+						}
+					};
 				}
 
 				template<bool use_self, typename Prop>
@@ -109,6 +137,7 @@ namespace tc {
 					}
 
 					vtable.setter = create_set_value<use_self, Prop>();
+					vtable.visit = create_visitor<use_self, Prop>();
 
 					return vtable;
 				}
@@ -131,8 +160,8 @@ namespace tc {
 				static auto create_set_value() {
 					using obj_ptr = member_ptr<Outer, Prop>;
 
-					static auto set_member = [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const auto &value) {
-						obj_member &prop = obj.props[ctx.object];
+					static auto set_member = [](const ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const auto &value) {
+						const obj_member &prop = obj.props.at(member_idx);
 						if constexpr (use_self) {
 							auto &arr = outer;
 							auto &v = arr[std::string(ctx.id.name)];
@@ -142,15 +171,28 @@ namespace tc {
 					};
 
 					if constexpr (member_type_trait_v<Prop> == MT_enum) {
-						return [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const std::string &value) {
+						return [](const ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const std::string &value) {
 							set_member(obj, ctx, outer, member_idx, enum_to_string<Prop>::to_enum(value));
 						};
 					}
 					else {
-						return [](ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const Prop &value) {
+						return [](const ObjOuter &obj, context &ctx, Outer &outer, id_type member_idx, const Prop &value) {
 							set_member(obj, ctx, outer, member_idx, value);
 						};
 					}
+				}
+
+				template<bool use_self, typename Prop>
+				static auto create_visitor() {
+					using obj_ptr = member_ptr<Outer, Prop>;
+					return [](const ObjOuter &obj, schema::visitor &v, Outer &outer, id_type member_idx) {
+						if constexpr (use_self) {
+							auto &arr = outer;
+							for (const auto &i : arr) {
+								v.set(i.first, i.second);
+							}
+						}
+					};
 				}
 
 				template<bool use_self, typename Prop>
@@ -165,6 +207,7 @@ namespace tc {
 					}
 
 					vtable.setter = create_set_value<use_self, Type>();
+					vtable.visit = create_visitor<use_self, Type>();
 
 					return vtable;
 				}
@@ -198,24 +241,31 @@ namespace tc {
 			template<typename Outer, typename ObjType>
 			template<typename Prop>
 			member_primitive<Outer, ObjType>::member_primitive(ObjType &obj, member_object_type<Prop>)
-				: vtable{ create_primitive_vtable<Outer, true>(member_object_type_v<Prop>) } {
+				: type_id{ type_identifier<Prop>() }
+				, vtable{ create_primitive_vtable<Outer, true>(member_object_type_v<Prop>) } {
 			}
 
 			template<typename Outer, typename ObjType>
 			template<typename Prop>
 			member_primitive<Outer, ObjType>::member_primitive(ObjType &obj, member_ptr<Outer, Prop>)
-				: vtable{ create_primitive_vtable<Outer, false>(member_object_type_v<Prop>) } {
+				: type_id{ type_identifier<Prop>() }
+				, vtable{ create_primitive_vtable<Outer, false>(member_object_type_v<Prop>) } {
 			}
 
 			template<typename Outer, typename ObjType>
 			template<typename Value>
-			void member_primitive<Outer, ObjType>::set_value(ObjType &obj, context &ctx, Outer &outer, id_type member_idx, const Value &value) {
+			void member_primitive<Outer, ObjType>::set_value(const ObjType &obj, context &ctx, Outer &outer, id_type member_idx, const Value &value) const {
 				vtable.set_value(obj, ctx, outer, member_idx, value);
 			}
 
 			template<typename Outer, typename ObjType>
+			void member_primitive<Outer, ObjType>::visit(const ObjType &obj, schema::visitor &v, Outer &outer, id_type id) const {
+				vtable.visit(obj, v, outer, id);
+			}
+
+			template<typename Outer, typename ObjType>
 			template<typename X>
-			void member_primitive_vtable<Outer, ObjType>::set_value(ObjType &obj, context &ctx, Outer &outer, id_type member_idx, const X &value) {
+			void member_primitive_vtable<Outer, ObjType>::set_value(const ObjType &obj, context &ctx, Outer &outer, id_type member_idx, const X &value) const {
 				auto handler = [this, &obj, &ctx, &outer, &member_idx, &value](auto &primitive) {
 					using Type = typename std::decay_t<decltype(primitive)>::type;
 					if constexpr (std::is_convertible_v<X, Type>) {
@@ -228,7 +278,7 @@ namespace tc {
 
 			template<typename Outer, typename ObjType>
 			template<typename X, typename Y>
-			void member_primitive_vtable<Outer, ObjType>::set(member_context &ctx, member<Outer, ObjType> &member, X &ptr_value, const Y &value) {
+			void member_primitive_vtable<Outer, ObjType>::set(member_context &ctx, const member<Outer, ObjType> &member, X &ptr_value, const Y &value) {
 				if constexpr (std::is_convertible_v<Y, X>) {
 					object<Outer> &obj = object<Outer>::instance;
 					ctx.is_in_range = true;

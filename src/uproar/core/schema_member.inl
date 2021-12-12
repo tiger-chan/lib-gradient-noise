@@ -46,7 +46,8 @@ namespace tc {
 			template<typename Outer, typename ObjType>
 			template<typename Y, typename... Z, template<class> typename... Constraint>
 			member<Outer, ObjType>::member(ObjType &obj, std::string_view name, member_object_type<Y> mem, std::string_view desc, Constraint<Z> &&...details)
-				: name{ name }
+				: type_id{ type_identifier<Y>() }
+				, name{ name }
 				, desc{ desc }
 				, type{ member_type_trait_v<Y> } {
 				if constexpr (member_type_trait_v<Y> == MT_object) {
@@ -63,6 +64,10 @@ namespace tc {
 					obj.children.emplace_back(obj, member_object_type<Y>{});
 					add_primitive(obj, *this, member_object_type<Y>{});
 				}
+				else if constexpr (member_type_trait_v<Y> < MT_object) {
+					primitive = id_type(obj.primitives.size());
+					obj.primitives.emplace_back(obj, member_object_type_v<Y>);
+				}
 
 				(add_constraint(obj, std::forward<Constraint<Z>>(details)), ...);
 			}
@@ -70,7 +75,8 @@ namespace tc {
 			template<typename Outer, typename ObjType>
 			template<typename Y, typename... Z, template<class> typename... Constraint>
 			member<Outer, ObjType>::member(ObjType &obj, std::string_view name, member_ptr<Outer, Y> mem, std::string_view desc, Constraint<Z> &&...details)
-				: name{ name }
+				: type_id{ type_identifier<Y>() }
+				, name{ name }
 				, desc{ desc }
 				, type{ member_type_trait_v<Y> } {
 				ptr = id_type(obj.prop_ptrs<Y>.size());

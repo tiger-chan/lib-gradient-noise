@@ -81,7 +81,9 @@ namespace tc {
 		};
 
 		struct parser_interface;
-		void parse(parser_interface &interface, std::string_view content);
+		namespace json {
+			void parse(parser_interface &interface, std::string_view content);
+		}
 	}    // namespace schema
 }    // namespace tc
 

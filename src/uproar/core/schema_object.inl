@@ -34,43 +34,52 @@ namespace tc {
 				using type = T;
 			};
 
-			template<typename Type, typename = std::enable_if_t<member_type_trait_v<Type> == MT_object>>
-			static object<Type> create_instance(instance_type_helper<Type>) {
+			template<typename Type>
+			static object<Type> create_object_instance(instance_type_helper<Type>) {
 				object<Type> instance{};
+
 				member<Type, object<Type>> self(instance, "this", member_object_type_v<Type>, n<Type>());
 				instance.props.emplace_back(std::move(self));
+
 				return instance;
 			}
 
-			template<template<class...> typename Container, typename Type, typename... Rest, typename = std::enable_if_t<member_type_trait_v<Container<Type, Rest...>> == MT_array>>
-			static object<Container<Type, Rest...>> create_instance(instance_type_helper<Container<Type, Rest...>>) {
+			template<template<class...> typename Container, typename Type, typename... Rest>
+			static object<Container<Type, Rest...>> create_array_instance(instance_type_helper<Container<Type, Rest...>>) {
 				using Outer = Container<Type, Rest...>;
 				object<Outer> instance{};
-				member<Outer, object<Outer>> self(instance, "this", member_object_type_v<Container<Type>>, n<Outer>());
-				instance.props.emplace_back(std::move(self));
 
-				if constexpr (member_type_trait_v<Type> >= MT_object) {
-					member<Outer, object<Outer>> helper(instance, "child_type", member_object_type_v<Type>, "Member helper for the child type");
-					instance.props.emplace_back(std::move(helper));
-				}
+				member<Outer, object<Outer>> helper(instance, "child_type", member_object_type_v<Type>, n<Type>());
+				instance.props.emplace_back(std::move(helper));
 
 				return instance;
 			}
 
-			template<template<class...> typename Container, typename Key, typename Type, typename... Rest, typename = std::enable_if_t<member_type_trait_v<Container<Key, Type, Rest...>> == MT_map>>
-			static object<Container<Key, Type, Rest...>> create_instance(instance_type_helper<Container<Key, Type, Rest...>>) {
+			template<template<class...> typename Container, typename Key, typename Type, typename... Rest>
+			static object<Container<Key, Type, Rest...>> create_map_instance(instance_type_helper<Container<Key, Type, Rest...>>) {
 				using Outer = Container<Key, Type, Rest...>;
 				object<Outer> instance{};
 
-				member<Outer, object<Outer>> self(instance, "this", member_object_type_v<Container<Key, Type>>, n<Outer>());
-				instance.props.emplace_back(std::move(self));
-
-				if constexpr (member_type_trait_v<Type> >= MT_object) {
-					member<Outer, object<Outer>> helper(instance, "child_type", member_object_type_v<Type>, "Member helper for the child type");
-					instance.props.emplace_back(std::move(helper));
-				}
+				member<Outer, object<Outer>> helper(instance, "child_type", member_object_type_v<Type>, n<Type>());
+				instance.props.emplace_back(std::move(helper));
 
 				return instance;
+			}
+
+			template<typename Type>
+			static object<Type> create_instance(const instance_type_helper<Type> &) {
+				if constexpr (member_type_trait_v<Type> < MT_object) {
+					static_assert(member_type_trait_v<Type> > MT_object, "Cannot create an instance from a primitive type.");
+				}
+				else if constexpr (member_type_trait_v<Type> == MT_object) {
+					return create_object_instance(instance_type_helper<Type>{});
+				}
+				else if constexpr (member_type_trait_v<Type> == MT_array) {
+					return create_array_instance(instance_type_helper<Type>{});
+				}
+				else if constexpr (member_type_trait_v<Type> == MT_map) {
+					return create_map_instance(instance_type_helper<Type>{});
+				}
 			}
 
 			template<typename Type>
@@ -93,90 +102,100 @@ namespace tc {
 
 			template<typename Type>
 			template<typename Value>
-			void object<Type>::set_value(context_stack &stack, Type &obj, const Value &value) {
+			void object<Type>::set_value(context_stack &stack, Type &outer, const Value &value) const {
 				if constexpr (std::is_enum_v<Value>) {
 					std::string converted{ enum_to_string<Value>::to_string(value) };
-					set_value<std::string>(stack, stack_pos, obj, converted);
+					set_value<std::string>(stack, stack_pos, outer, converted);
 				}
 				else {
-					context &ctx{ stack[0] };
 					if constexpr (member_type_trait_v<Type> >= MT_object) {
-						if (stack.size() == 1) {
-							// this is a as deep as we need to go.
-							obj_member &prop = instance.props[ctx.object];
-							obj_primitive &prim = instance.primitives[prop.primitive];
-							prim.set_value(*this, ctx, obj, ctx.object, value);
-						}
-						else {
-							obj_member &prop = instance.props[ctx.object];
-							obj_forward &sub = instance.children[prop.child];
-							sub.set_value(*this, stack, 0, obj, value);
-						}
+						const object<Type> &obj = *this;
+						obj.self.set_value(obj, stack, 0, outer, value);
 					}
 				}
 			}
 
 			template<typename Type>
-			void object<Type>::push_back(context_stack &stack, int stack_pos, std::string_view name) {
-				if (stack_pos == stack.size()) {
-					if constexpr (member_type_trait_v<Type> == MT_object) {
-						auto iter = instance.prop_lookup.find(name);
-						if (iter == std::end(instance.prop_lookup)) {
-							return;
-						}
+			template<typename Value>
+			void object<Type>::visit(schema::visitor &v, Value &val) const {
+				const object<Type> &obj = *this;
+				obj.self.visit(obj, v, val, "");
 
-						context &ctx = stack.emplace_back();
-						ctx.object = iter->second;
-						ctx.type = instance.props[iter->second].type;
-						ctx.id.name = instance.props[iter->second].name;
-						ctx.member_context.resize(instance.props.size());
-					}
-					else if constexpr (member_type_trait_v<Type> == MT_map) {
-						auto &prop = instance.props[0];
-						obj_forward &sub = instance.children[prop.child];
-						sub.push_back(stack, stack_pos, name);
-					}
-				}
-				else if (stack_pos < stack.size()) {
-					auto &ctx = stack[stack_pos];
-					auto &prop = instance.props[ctx.object];
-					obj_forward &sub = instance.children[prop.child];
-					sub.push_back(stack, stack_pos, name);
-				}
+				// if constexpr (member_type_trait_v<Type> == MT_object) {
+				// 	object<Type> &obj = instance;
+				// 	for (size_t i = 1; i < obj.props; ++i) {
+				// 		obj_member &prop = obj.props[0];
+				// 		if (prop.child != null) {
+				// 			obj_forward &sub = obj.children[prop.child];
+				// 			sub.visit(obj, v, val, "");
+				// 		}
+				// 		else if (prop.primitive != null) {
+				// 			obj_primitive &sub = obj.primitives[prop.primitive];
+				// 			sub.visit(obj, v, val, i);
+				// 		}
+				// 	}
+				// }
+				// else if constexpr (member_type_trait_v<Type> == MT_array || member_type_trait_v<Type> == MT_map) {
+				// 	object<Type> &obj = instance;
+				// 	bool contains_obj = obj.props.size() == 2;
+				// 	if (contains_obj) {
+				// 		obj_member &prop = obj.props[0];
+				// 		if (prop.child != null) {
+				// 			obj_forward &sub = obj.children[prop.child];
+				// 			sub.visit(obj, v, val, "");
+				// 		}
+				// 	}
+				// 	else {
+				// 		obj_member &prop = obj.props[0];
+				// 		if (prop.primitive != null) {
+				// 			obj_primitive &sub = obj.primitives[prop.primitive];
+				// 			sub.visit(obj, v, val, 0);
+				// 		}
+				// 	}
+				// }
 			}
 
 			template<typename Type>
-			void object<Type>::push_back(context_stack &stack, std::string_view name) {
+			void object<Type>::push_back(context_stack &stack, int stack_pos, std::string_view name) const {
+				const object<Type> &obj = *this;
+				obj.self.push_back(stack, stack_pos, name);
+			}
+
+			template<typename Type>
+			void object<Type>::push_back(context_stack &stack, std::string_view name) const {
 				push_back(stack, 0, name);
 			}
 
 			template<typename Type>
-			void object<Type>::push_back(context_stack &stack, int stack_pos, int32 array_idx) {
-				if (stack_pos == stack.size()) {
-					if constexpr (member_type_trait_v<Type> == MT_array) {
-						auto &prop = instance.props[0];
-						obj_forward &sub = instance.children[prop.child];
-						sub.push_back(stack, stack_pos, array_idx);
-					}
-				}
-				else if (stack_pos < stack.size()) {
-					auto &ctx = stack[stack_pos];
-					auto &prop = instance.props[ctx.object];
-					obj_forward &sub = instance.children[prop.child];
-					sub.push_back(stack, stack_pos, array_idx);
-				}
+			void object<Type>::push_back(context_stack &stack, int stack_pos, int32 array_idx) const {
+				const object<Type> &obj = *this;
+				obj.self.push_back(stack, stack_pos, array_idx);
 			}
 
 			template<typename Type>
-			void object<Type>::push_back(context_stack &stack, int32 array_idx) {
+			void object<Type>::push_back(context_stack &stack, int32 array_idx) const {
 				push_back(stack, 0, array_idx);
 			}
 
 			template<typename Type>
-			context object<Type>::pop_back(context_stack &stack) {
+			context object<Type>::pop_back(context_stack &stack) const {
 				// TODO: Validation should occur here?
 				return stack.pop_back();
 			}
 		}    // namespace detail
+	}    // namespace schema
+}    // namespace tc
+
+namespace tc {
+	namespace schema {
+		template<typename Type>
+		void visit(visitor &visitor, Type &obj) {
+			if constexpr (member_type_trait_v<Type> < MT_object) {
+				visitor.set("", obj);
+			}
+			else {
+				detail::object<Type>::instance.visit(visitor, obj);
+			}
+		}
 	}    // namespace schema
 }    // namespace tc
