@@ -13,10 +13,9 @@ namespace tc {
 
 			SET_VTABLE(set_bool, bool)
 			else SET_VTABLE(set_char, char) else SET_VTABLE(set_int16, int16) else SET_VTABLE(set_int32, int32) else SET_VTABLE(set_int64, int64) else SET_VTABLE(set_uint8, uint8) else SET_VTABLE(set_uint16, uint16) else SET_VTABLE(set_uint32, uint32) else SET_VTABLE(set_uint64, uint64) else SET_VTABLE(set_float, float) else SET_VTABLE(set_double, double) else SET_VTABLE(set_string, std::string)
-
 #undef SET_VTABLE
 
-			else if constexpr (std::is_enum_v<V>) {
+				else if constexpr (std::is_enum_v<V>) {
 				std::string val{ enum_to_string<V>::to_string(value) };
 				vtable.set_string(data, name, val);
 			}
