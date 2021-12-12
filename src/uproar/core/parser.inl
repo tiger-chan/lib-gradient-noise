@@ -1,5 +1,6 @@
 #include "mapper.hpp"
 #include "parser.hpp"
+#include <sstream>
 
 namespace tc {
 	namespace schema {
@@ -706,77 +707,24 @@ namespace tc {
 		void json_parser::parse_number(parser_interface &interface, lexer_token *&cursor, lexer_token *tend, const std::string_view &name) {
 			std::string_view value{ cursor->data, cursor->size };
 
-			bool is_negative = value[0] == '-';
-			if (is_negative) {
-				value = value.substr(1, value.size() - 1);
-			}
+			std::stringstream stream{};
+			double val;
+			stream << value;
+			stream >> val;
 
-			// integer portion
-			int64 integer = 0;
+			bool is_decimal = false;
 			for (uint32 i = 0; i < value.size(); ++i) {
-				if (grammar::json::is_digit(value[i])) {
-					int32 val(value[i] - '0');
-					integer *= 10;
-					integer += val;
-				}
-				else {
-					value = value.substr(i);
+				if (value[i] == '.') {
+					is_decimal = true;
 					break;
 				}
 			}
 
-			// fraction if present.
-			int64 frac = 0;
-			int32 point = 0;
-			if (value[0] == '.') {
-				for (uint32 i = 1; i < value.size(); ++i) {
-					if (grammar::json::is_digit(value[i])) {
-						int32 val(value[i] - '0');
-						frac *= 10;
-						frac += val;
-						++point;
-					}
-					else {
-						value = value.substr(i);
-						break;
-					}
-				}
-			}
-
-			// exponent if present
-			int64 exponent = 0;
-			if (value[0] == 'e' || value[0] == 'E') {
-				for (uint32 i = 1; i < value.size(); ++i) {
-					if (grammar::json::is_digit(value[i])) {
-						int32 val(value[i] - '0');
-						exponent *= 10;
-						exponent += val;
-					}
-				}
-			}
-
-			int32 mulitplier = is_negative ? -1 : 1;
-
-			if (point) {
-				double val = static_cast<double>(frac);
-				for (int32 i = 0; i < point; ++i) {
-					val *= 0.1;
-				}
-
-				val += integer;
-
-				for (int32 i = 0; i < exponent; ++i) {
-					val *= 10;
-				}
-				val *= mulitplier;
+			if (is_decimal) {
 				interface.set_value<double>(name, val);
 			}
 			else {
-				for (int32 i = 0; i < exponent; ++i) {
-					integer *= 10;
-				}
-				integer *= mulitplier;
-				interface.set_value<int64>(name, integer);
+				interface.set_value<int64>(name, static_cast<int64>(val));
 			}
 
 			++cursor;
